@@ -105,3 +105,31 @@ export const uploadOrders = (formData) => {
         },
     });
 };
+// Delete order (client)
+export const deleteOrder = (orderId) => {
+    const token = localStorage.getItem("accessToken");
+    if (!token) {
+        throw new Error("Token not available");
+    }
+
+    return axios.delete(`${API_URL}/orders/${orderId}`, {
+        headers: {
+            Authorization: `Bearer ${token}`,
+        },
+    });
+};
+
+// Update order (client)
+export const updateOrderClient = (orderId, updatedData) => {
+    const token = localStorage.getItem("accessToken");
+    if (!token) {
+        throw new Error("Token not available");
+    }
+
+    return axios.put(`${API_URL}/orders/${orderId}`, updatedData, {
+        headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+        },
+    });
+};

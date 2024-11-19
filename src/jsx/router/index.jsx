@@ -24,8 +24,6 @@ import Portofolio from "./../pages/dashboard/Portofolio";
 import EmptyPage from "./../pages/dashboard/EmptyPage";
 
 //trading
-import TradingMarket from "../pages/trading/TradingMarket";
-import IcoListing from "../pages/trading/IcoListing";
 import P2P from "../pages/trading/P2P";
 import FutureTrading from "../pages/trading/FutureTrading";
 
@@ -35,7 +33,7 @@ import Exchange from "../pages/crypto/Exchange";
 import Banking from "../pages/crypto/Banking";
 
 //Reports
-import History from "../pages/report/History";
+// import History from "../pages/report/History";
 import Orders from "../pages/report/Orders";
 import Reports from "../pages/report/Reports";
 import User from "../pages/report/User";
@@ -133,8 +131,8 @@ const Markup = () => {
     { url: "portofolio", component: <Portofolio /> },
 
     //Trading
-    { url: "trading-market", component: <TradingMarket /> },
-    { url: "ico-listing", component: <IcoListing /> },
+    // { url: "trading-market", component: <TradingMarket /> },
+    // { url: "ico-listing", component: <IcoListing /> },
     { url: "p2p", component: <P2P /> },
     { url: "future", component: <FutureTrading /> },
 

@@ -322,11 +322,11 @@ const ExposureSummary = () => {
                             ? `${
                                 forwardItem?.["Forward Rate"].toFixed(4) ||
                                 "N/A"
-                              } €`
+                              } `
                             : `${
                                 forwardItem?.["Forward Rate"].toFixed(4) ||
                                 "N/A"
-                              } $`}
+                              } `}
                         </td>
                         <td>{varItem?.["VaR 1%"]?.toFixed(2) || "N/A"}</td>
                         <td>{varItem?.["VaR 5%"]?.toFixed(2) || "N/A"}</td>

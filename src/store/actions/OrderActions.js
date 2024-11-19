@@ -7,6 +7,8 @@ import {
     runMatching,
     updateOrder,
     uploadOrders,
+    deleteOrder,
+    updateOrderClient,
 } from '../../services/OrderService';
 
 // Action types
@@ -109,5 +111,26 @@ export const uploadOrdersAction = (formData) => async (dispatch) => {
     } catch (error) {
         console.error("Error uploading orders:", error);
         dispatch({ type: UPLOAD_ORDERS_FAILURE, payload: 'Error uploading orders' });
+    }
+};
+// Delete order action
+export const deleteOrderAction = (orderId) => async (dispatch) => {
+    try {
+        await deleteOrder(orderId);  // Call service to delete order
+        dispatch(fetchOrdersAction(false));  // Refetch orders for client after deletion
+    } catch (error) {
+        console.error("Error deleting order:", error);
+        dispatch({ type: ORDER_FAILURE, payload: "Error deleting order" });
+    }
+};
+
+// Update order action for client updates
+export const updateOrderClientAction = (orderId, updatedData) => async (dispatch) => {
+    try {
+        await updateOrderClient(orderId, updatedData);  // Call service to update order
+        dispatch(fetchOrdersAction(false));  // Refetch orders for client after update
+    } catch (error) {
+        console.error("Error updating order:", error);
+        dispatch({ type: ORDER_FAILURE, payload: error.message });
     }
 };
