@@ -50,7 +50,7 @@ const ExposureSummary = () => {
     const fetchForwardData = async () => {
       try {
         const response = await axios.get(
-          "http://localhost:5001/admin/api/calculate-forward-rate"
+          "http://localhost:5001/api/calculate-forward-rate"
         );
         setForwardData(response.data);
       } catch (error) {
@@ -61,7 +61,7 @@ const ExposureSummary = () => {
     const fetchVarData = async () => {
       try {
         const response = await axios.get(
-          "http://localhost:5001/admin/api/calculate-var"
+          "http://localhost:5001/api/calculate-var"
         );
         setVarData(response.data);
       } catch (error) {
@@ -89,13 +89,13 @@ const ExposureSummary = () => {
       setUploadMessage("File uploaded successfully.");
       const fetchForwardData = async () => {
         const response = await axios.get(
-          "http://localhost:5001/admin/api/calculate-forward-rate"
+          "http://localhost:5001/api/calculate-forward-rate"
         );
         setForwardData(response.data);
       };
       const fetchVarData = async () => {
         const response = await axios.get(
-          "http://localhost:5001/admin/api/calculate-var"
+          "http://localhost:5001/api/calculate-var"
         );
         setVarData(response.data);
       };

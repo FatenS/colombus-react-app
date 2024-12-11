@@ -15,6 +15,7 @@ import {
   uploadOrdersAction,
   updateOrderClientAction,
   deleteOrderAction,
+  updateOrderAction,
 } from "../../../store/actions/OrderActions";
 
 const FutureTrading = () => {
@@ -39,7 +40,7 @@ const FutureTrading = () => {
   const [status, setStatus] = useState("");
   const [executionRate, setExecutionRate] = useState("");
   const [bankName, setBankName] = useState("");
-
+  const [historicalLoss, setHistoricalLoss] = useState("");
   const [amount, setAmount] = useState("");
   const [bankAccount, setBankAccount] = useState("");
   const [transactionType, setTransactionType] = useState("buy");
@@ -112,6 +113,61 @@ const FutureTrading = () => {
         });
       });
   };
+  const handleSaveChanges = () => {
+    console.log("Active Tab:", activeTab);
+    console.log("Saving changes for:", editingOrder);
+
+    // Validate required fields
+    if (!status || !executionRate || !bankName || !historicalLoss) {
+      Swal.fire({
+        icon: "error",
+        title: "Validation Error",
+        text: "All fields are required.",
+      });
+      return;
+    }
+
+    // Prepare data
+    const updatedOrder = {
+      status,
+      execution_rate: parseFloat(executionRate),
+      bank_name: bankName,
+      historical_loss: parseFloat(historicalLoss),
+    };
+
+    console.log(
+      "Dispatching updateOrderAction with:",
+      editingOrder.id,
+      updatedOrder
+    );
+
+    dispatch(updateOrderAction(editingOrder.id, updatedOrder))
+      .then(() => {
+        Swal.fire({
+          icon: "success",
+          title: "Order Updated!",
+          text: `The order in ${activeTab} has been updated successfully.`,
+        });
+        setShowEditModal(false);
+        setEditingOrder(null);
+
+        // Refetch data for the active tab
+        if (activeTab === "MarketOrders") {
+          dispatch(fetchMarketOrdersAction());
+        } else if (activeTab === "MatchedOrders") {
+          dispatch(fetchMatchedOrdersAction());
+        }
+      })
+      .catch((error) => {
+        console.error("Error updating order:", error);
+        Swal.fire({
+          icon: "error",
+          title: "Update Failed",
+          text: error.response?.data?.message || "An error occurred.",
+        });
+      });
+  };
+
   const handleEditOrderClick = (order) => {
     setEditingOrder(order); // Set the order being edited
     setAmount(order.amount); // Populate the form fields
@@ -126,6 +182,7 @@ const FutureTrading = () => {
     const updatedOrder = {
       status,
       execution_rate: parseFloat(executionRate),
+      historical_loss: parseFloat(historicalLoss),
       bank_name: bankName,
     };
 
@@ -211,11 +268,13 @@ const FutureTrading = () => {
         });
       });
   };
-  const handleEditMarketOrderClick = (order) => {
+  const handleEditClick = (order, tab) => {
     setEditingOrder(order);
     setStatus(order.status || "");
     setExecutionRate(order.execution_rate || "");
     setBankName(order.bank_name || "");
+    setHistoricalLoss(order.historical_loss || "");
+    setActiveTab(tab);
     setShowEditModal(true);
   };
 
@@ -336,8 +395,15 @@ const FutureTrading = () => {
       </div>
     );
   };
-
-  const OrderTable = ({ orders, isAdmin, onEditClick, showRateAndBank }) => {
+  const OrderTable = ({
+    orders,
+    isAdmin,
+    onEditClick,
+    handleDeleteOrder, // Accept delete handler
+    showRateAndBank,
+    additionalAttributes = [],
+    activeTab, // To differentiate between Orders, MarketOrders, and MatchedOrders
+  }) => {
     const currentOrders = orders.slice(
       (activePage - 1) * itemsPerPage,
       activePage * itemsPerPage
@@ -355,6 +421,11 @@ const FutureTrading = () => {
                 <th>Currency</th>
                 <th>Status</th>
                 <th>Value Date</th>
+                {/* Dynamically add additional attributes */}
+                {additionalAttributes.map((attr, i) => (
+                  <th key={i}>{attr.label}</th>
+                ))}
+                {/* Conditionally render Execution Rate and Bank Name */}
                 {showRateAndBank && <th>Execution Rate</th>}
                 {showRateAndBank && <th>Bank Name</th>}
                 <th>Actions</th>
@@ -385,6 +456,11 @@ const FutureTrading = () => {
                   <td>{order.currency}</td>
                   <td>{order.status}</td>
                   <td>{order.value_date}</td>
+                  {/* Dynamically render values for additional attributes */}
+                  {additionalAttributes.map((attr, j) => (
+                    <td key={j}>{order[attr.key] || "N/A"}</td>
+                  ))}
+                  {/* Conditionally render Execution Rate and Bank Name */}
                   {showRateAndBank && (
                     <td>
                       {order.execution_rate ? order.execution_rate : "N/A"}
@@ -404,7 +480,6 @@ const FutureTrading = () => {
                       </Button>
                     </td>
                   )}
-
                   <td>
                     {order.status === "Pending" && (
                       <>
@@ -519,6 +594,7 @@ const FutureTrading = () => {
                           orders={orders}
                           isAdmin={isAdmin}
                           onEditClick={handleEditOrderClick}
+                          handleDeleteOrder={handleDeleteOrder} 
                           showRateAndBank={false}
                         />
                       </div>
@@ -561,38 +637,27 @@ const FutureTrading = () => {
                     <OrderTable
                       orders={marketOrders}
                       isAdmin={isAdmin}
-                      onEditClick={handleEditMarketOrderClick}
+                      onEditClick={(order) =>
+                        handleEditClick(order, "MarketOrders")
+                      }
                       showRateAndBank={true}
                     />
                   </Tab.Pane>
 
                   <Tab.Pane eventKey="MatchedOrders">
-                    <div className="table-responsive">
-                      <table className="table shadow-hover orderbookTable">
-                        <thead>
-                          <tr>
-                            <th>ID</th>
-                            <th>Buyer</th>
-                            <th>Seller</th>
-                            <th>Amount</th>
-                            <th>Currency</th>
-                            <th>Value Date</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {matchedOrders.map((order, i) => (
-                            <tr key={i}>
-                              <td>{order.id}</td>
-                              <td>{order.buyer}</td>
-                              <td>{order.seller}</td>
-                              <td>{order.matched_amount}</td>
-                              <td>{order.currency}</td>
-                              <td>{order.value_date}</td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
+                    <OrderTable
+                      orders={matchedOrders}
+                      isAdmin={isAdmin}
+                      onEditClick={(order) =>
+                        handleEditClick(order, "MatchedOrders")
+                      }
+                      showRateAndBank={true} // Include Execution Rate and Bank Name
+                      additionalAttributes={[
+                        { key: "buyer", label: "Buyer" },
+                        { key: "seller", label: "Seller" },
+                        { key: "matched_amount", label: "Matched Amount" },
+                      ]}
+                    />
                   </Tab.Pane>
                 </Tab.Content>
               </div>
@@ -620,7 +685,10 @@ const FutureTrading = () => {
         setExecutionRate={setExecutionRate}
         bankName={bankName}
         setBankName={setBankName}
-        onSaveChanges={handleSaveMarketOrderChanges}
+        historicalLoss={historicalLoss}
+        setHistoricalLoss={setHistoricalLoss}
+        onSaveChanges={handleSaveChanges}
+        activeTab={activeTab} // Pass activeTab to the modal
       />
     </div>
   );
