@@ -17,28 +17,8 @@ export function MainComponent() {
     <Row>
       <Col xl={12}>
         <Row>
-          <div className="col-xl-6">
-            <div className="card crypto-chart">
-              <div className="card-header pb-0 border-0 flex-wrap">
-                <div className="d-flex mb-2">
-                  <div className="form-check form-switch toggle-switch me-6">
-                    {" "}
-                    <h2 className="text-center mb-4 text-primary">
-                      Résumé des gains sur transaction
-                    </h2>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
           <div className="col-xl-12">
-            <div className="card market-chart">
-              <div className="card-header border-0 pb-0 flex-wrap">
-                <div className="mb-0">
-                  <Market />
-                </div>
-              </div>
-            </div>
+            <Market />
           </div>
         </Row>
         <Col lg={12}></Col>

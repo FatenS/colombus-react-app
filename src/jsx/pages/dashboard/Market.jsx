@@ -149,68 +149,70 @@ const Market = () => {
       },
     ],
   };
+  const forwardRateLabels =
+    forwardRate?.map(
+      (item) => `${item.transaction_date} (${item.value_date})`
+    ) || [];
+
+  const securedExportData =
+    forwardRate?.map((item) => item.secured_forward_rate_export) || [];
+  const marketExportData =
+    forwardRate?.map((item) => item.market_forward_rate_export) || [];
+  const securedImportData =
+    forwardRate?.map((item) => item.secured_forward_rate_import) || [];
+  const marketImportData =
+    forwardRate?.map((item) => item.market_forward_rate_import) || [];
 
   const forwardRateChartData = {
-    labels: [...new Set(forwardRate.map((item) => item.transaction_date))],
+    labels: forwardRateLabels,
     datasets: [
       {
-        label: "Taux à terme sécurisé (Export)",
-        data: forwardRate.map((item) =>
-          item.secured_forward_rate_export === null
-            ? null
-            : item.secured_forward_rate_export
-        ),
+        label: "Secured Forward Rate - Export",
+        data: securedExportData,
         borderColor: "#007bff",
         backgroundColor: "rgba(0, 123, 255, 0.1)",
         fill: false,
-        tension: 0.3,
-        pointRadius: 3,
-        spanGaps: false,
+        tension: 0.4,
+        pointRadius: 4,
+        pointHoverRadius: 6,
+        spanGaps: true,
       },
       {
-        label: "Taux à terme marché (Export)",
-        data: forwardRate.map((item) =>
-          item.market_forward_rate_export === null
-            ? null
-            : item.market_forward_rate_export
-        ),
+        label: "Market Forward Rate - Export",
+        data: marketExportData,
         borderColor: "#ffc107",
         backgroundColor: "rgba(255, 193, 7, 0.1)",
         fill: false,
-        tension: 0.3,
-        pointRadius: 3,
-        spanGaps: false,
+        tension: 0.4,
+        pointRadius: 4,
+        pointHoverRadius: 6,
+        spanGaps: true,
       },
       {
-        label: "Taux à terme sécurisé (Import)",
-        data: forwardRate.map((item) =>
-          item.secured_forward_rate_import === null
-            ? null
-            : item.secured_forward_rate_import
-        ),
+        label: "Secured Forward Rate - Import",
+        data: securedImportData,
         borderColor: "#28a745",
         backgroundColor: "rgba(40, 167, 69, 0.1)",
         fill: false,
-        tension: 0.3,
-        pointRadius: 3,
-        spanGaps: false,
+        tension: 0.4,
+        pointRadius: 4,
+        pointHoverRadius: 6,
+        spanGaps: true,
       },
       {
-        label: "Taux à terme marché (Import)",
-        data: forwardRate.map((item) =>
-          item.market_forward_rate_import === null
-            ? null
-            : item.market_forward_rate_import
-        ),
+        label: "Market Forward Rate - Import",
+        data: marketImportData,
         borderColor: "#dc3545",
         backgroundColor: "rgba(220, 53, 69, 0.1)",
         fill: false,
-        tension: 0.3,
-        pointRadius: 3,
-        spanGaps: false,
+        tension: 0.4,
+        pointRadius: 4,
+        pointHoverRadius: 6,
+        spanGaps: true,
       },
     ],
   };
+  <Line data={forwardRateChartData} options={optionsLine} />;
 
   // Tooltip renderer
   const renderTooltip = (props) => (
@@ -234,8 +236,7 @@ const Market = () => {
       <Row className="mb-4">
         <Col md={12}>
           <h3 className="text-dark text-center" style={{ fontWeight: 600 }}>
-            Résumé des gains sur transaction -{" "}
-            {new Date().toLocaleDateString("fr-FR")}
+            Résumé des gains sur transaction
           </h3>
         </Col>
       </Row>

@@ -2,6 +2,8 @@
 import React, { useContext } from "react";
 import { Routes, Route, Outlet } from "react-router-dom";
 import { useSelector } from "react-redux";
+import ProtectedRoute from "./ProtectedRoute";
+
 /// Css
 import "./../index.css";
 import "./../chart.css";
@@ -18,9 +20,11 @@ import ScrollToTop from "./../layouts/ScrollToTop";
 import Home from "./../pages/dashboard/Home";
 import DashboardDark from "./../pages/dashboard/DashboardDark";
 import Market from "./../pages/dashboard/Market";
+import LandingPage from "./../pages/dashboard/LandingPage";
 import CoinDetails from "./../pages/dashboard/CoinDetails";
 import Portofolio from "./../pages/dashboard/Portofolio";
-
+import Login from "../pages/authentication/Login";
+import Register from "../pages/authentication/Registration";
 import EmptyPage from "./../pages/dashboard/EmptyPage";
 
 //trading
@@ -122,7 +126,7 @@ import Error403 from "./../pages/error/Error403";
 import Error404 from "./../pages/error/Error404";
 import Error500 from "./../pages/error/Error500";
 import Error503 from "./../pages/error/Error503";
-import RightWalletBar from "../layouts/nav/RightWalletBar";
+// import RightWalletBar from "../layouts/nav/RightWalletBar";
 
 const Markup = () => {
   const allroutes = [
@@ -230,6 +234,9 @@ const Markup = () => {
   return (
     <>
       <Routes>
+        <Route path="/" element={<LandingPage />} />
+        <Route path="/login" element={<Login />} />
+        <Route path="/page-register" element={<Register />} />
         <Route path="/page-lock-screen" element={<LockScreen />} />
         <Route path="/page-error-400" element={<Error400 />} />
         <Route path="/page-error-403" element={<Error403 />} />
@@ -237,9 +244,21 @@ const Markup = () => {
         <Route path="/page-error-500" element={<Error500 />} />
         <Route path="/page-error-503" element={<Error503 />} />
         <Route element={<MainLayout />}>
-          <Route path="/" element={<Home />} />
-          <Route path="/dashboard" element={<Home />} />
-          <Route path="/index-2" element={<DashboardDark />} />
+          <Route
+            path="/dashboard"
+            element={
+                <Home />
+            }
+          />
+
+          <Route
+            path="/index-2"
+            element={
+              <ProtectedRoute>
+                <DashboardDark />
+              </ProtectedRoute>
+            }
+          />
         </Route>
         <Route element={<MainLayout2 />}>
           {allroutes.map((data, i) => (
@@ -270,7 +289,7 @@ function MainLayout() {
         } ${sideMenu ? "menu-toggle" : ""}`}
       >
         <Nav />
-        <RightWalletBar />
+        {/* <RightWalletBar /> */}
         <div className="content-body">
           <div
             className="container-fluid"

@@ -50,14 +50,25 @@ export function saveTokenInLocalStorage(tokenDetails) {
 }
 
 // Function to check and handle automatic login
-export function checkAutoLogin(dispatch, navigate) {
+// export function checkAutoLogin(dispatch, navigate) {
+//     const token = localStorage.getItem('accessToken');
+//     if (!token) {
+//         dispatch(Logout(navigate)); // If no token, log out
+//         return;
+//     }
+
+//     // Token is present, confirm login
+//     dispatch(loginConfirmedAction({ access_token: token }));
+// }
+
+export function checkAutoLogin(dispatch) {
     const token = localStorage.getItem('accessToken');
     if (!token) {
-        dispatch(Logout(navigate)); // If no token, log out
+        // Don't do anything if no token, just let the user stay on landing page
         return;
     }
 
-    // Token is present, confirm login
+    // If token exists, confirm login
     dispatch(loginConfirmedAction({ access_token: token }));
 }
 
