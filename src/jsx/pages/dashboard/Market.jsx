@@ -39,8 +39,19 @@ const Market = () => {
     { label: "EUR", value: "EUR" },
   ];
 
-  // Chart options with a cleaner style
+  /**
+   * ----------------------------------------------------------------
+   * 1) MONTHLY BAR + LINE CHART (Total Transigé & Gain total par mois)
+   * ----------------------------------------------------------------
+   */
+
+  // Ensure the line dataset renders above the bars by using 'order' property.
+  // Also, set maintainAspectRatio to false for more flexible sizing,
+  // and you can adjust 'aspectRatio' if you still want a certain ratio.
   const optionsBar = {
+    responsive: true,
+    maintainAspectRatio: false, // let the parent container control the height
+    aspectRatio: 1.5, // tweak as desired (won't matter if maintainAspectRatio is false)
     scales: {
       x: {
         grid: {
@@ -51,6 +62,25 @@ const Market = () => {
         beginAtZero: true,
         grid: {
           color: "#e9ecef",
+        },
+        position: "left",
+        title: {
+          display: true,
+          text: "Total transigé (TND)",
+        },
+      },
+      y1: {
+        beginAtZero: true,
+        grid: {
+          drawOnChartArea: false,
+        },
+        position: "right",
+        title: {
+          display: true,
+          text: "Gain total (TND)",
+        },
+        ticks: {
+          callback: (value) => `${value.toLocaleString()} TND`,
         },
       },
     },
@@ -67,63 +97,92 @@ const Market = () => {
       duration: 800,
       easing: "easeInOutQuart",
     },
-    responsive: true,
-    maintainAspectRatio: false,
   };
 
-  const optionsLine = {
-    scales: {
-      x: {
-        grid: {
-          color: "#e9ecef",
-        },
-      },
-      y: {
-        beginAtZero: true,
-        grid: {
-          color: "#e9ecef",
-        },
-      },
-    },
-    tension: 0.3,
-    animation: {
-      duration: 800,
-      easing: "easeInOutQuart",
-    },
-    plugins: {
-      legend: {
-        labels: {
-          font: {
-            family: "'Roboto', 'Helvetica', 'Arial', sans-serif",
-          },
-        },
-      },
-    },
-    responsive: true,
-    maintainAspectRatio: false,
-  };
-
-  // Chart Data
+  // Bar + Line combined data. We add `order` so the line is on top (higher order).
   const monthlyBarChartData = {
     labels: summary.months || [],
     datasets: [
       {
         label: "Total transigé en TND",
         data: summary.monthlyTotalTransacted || [],
-        backgroundColor: "#4682B4",
+        backgroundColor: "rgba(70, 130, 180, 0.6)", // Slightly transparent
         borderColor: "#315f82",
         borderWidth: 1,
+        yAxisID: "y",
+        order: 1, // Bars behind
+        barPercentage: 1, // tweak bar thickness
       },
       {
         label: "Gain total en TND",
         data: summary.monthlyTotalGain || [],
         type: "line",
         borderColor: "#FF6347",
+        borderWidth: 2,
         backgroundColor: "rgba(255, 99, 132, 0.1)",
         fill: true,
         tension: 0.3,
+        yAxisID: "y1",
+        order: 2, // Line on top
       },
     ],
+  };
+
+  /**
+   * ------------------------------------------------------
+   * 2) SUPERPERFORMANCE LINE CHART (Taux d'exécution vs Taux interbancaire)
+   * ------------------------------------------------------
+   */
+
+  // Dynamically compute min & max for a bit of padding so lines aren’t too close.
+  const superPerfValues =
+    Array.isArray(superperformanceTrend) && superperformanceTrend.length
+      ? superperformanceTrend.flatMap((item) => [
+          item.execution_rate,
+          item.interbank_rate,
+        ])
+      : [0];
+
+  const superPerfMin = Math.min(...superPerfValues);
+  const superPerfMax = Math.max(...superPerfValues);
+
+  // Here we give some extra headroom: 0.98 to 1.02
+  const optionsLine = {
+    responsive: true,
+    maintainAspectRatio: false,
+    aspectRatio: 1.5,
+    scales: {
+      x: {
+        grid: {
+          color: "#e9ecef",
+        },
+      },
+      y: {
+        grid: {
+          color: "#e9ecef",
+        },
+        beginAtZero: false,
+        min: superPerfMin * 0.98,
+        max: superPerfMax * 1.02,
+        ticks: {
+          stepSize: 0.01,
+        },
+      },
+    },
+    tension: 0.3,
+    plugins: {
+      legend: {
+        labels: {
+          font: {
+            family: "'Roboto', 'Helvetica', 'Arial', sans-serif",
+          },
+        },
+      },
+    },
+    animation: {
+      duration: 800,
+      easing: "easeInOutQuart",
+    },
   };
 
   const superperformanceChartData = {
@@ -137,83 +196,174 @@ const Market = () => {
           ? superperformanceTrend.map((item) => item.execution_rate)
           : [],
         borderColor: "#007bff",
+        borderWidth: 2,
         fill: false,
+        tension: 0.3,
+        pointRadius: 0,
+        pointHoverRadius: 3,
       },
       {
-        label: "Taux Interbancaire",
+        label: "Taux interbancaire",
         data: Array.isArray(superperformanceTrend)
           ? superperformanceTrend.map((item) => item.interbank_rate)
           : [],
         borderColor: "#ff7f50",
+        borderWidth: 2,
         fill: false,
+        tension: 0.3,
+        pointRadius: 0,
+        pointHoverRadius: 3,
       },
     ],
   };
-  const forwardRateLabels =
-    forwardRate?.map(
-      (item) => `${item.transaction_date} (${item.value_date})`
-    ) || [];
 
-  const securedExportData =
-    forwardRate?.map((item) => item.secured_forward_rate_export) || [];
-  const marketExportData =
-    forwardRate?.map((item) => item.market_forward_rate_export) || [];
-  const securedImportData =
-    forwardRate?.map((item) => item.secured_forward_rate_import) || [];
-  const marketImportData =
-    forwardRate?.map((item) => item.market_forward_rate_import) || [];
+  /**
+   * ---------------------------------------------------
+   * 3) FORWARD RATE LINE CHART (Secured vs Market Rates)
+   * ---------------------------------------------------
+   */
+
+  // Grab the min & max from all 4 lines:
+  const minRate = Math.min(
+    ...forwardRate.map((item) =>
+      Math.min(
+        item.secured_forward_rate_export || Infinity,
+        item.market_forward_rate_export || Infinity,
+        item.secured_forward_rate_import || Infinity,
+        item.market_forward_rate_import || Infinity
+      )
+    )
+  );
+
+  const maxRate = Math.max(
+    ...forwardRate.map((item) =>
+      Math.max(
+        item.secured_forward_rate_export || -Infinity,
+        item.market_forward_rate_export || -Infinity,
+        item.secured_forward_rate_import || -Infinity,
+        item.market_forward_rate_import || -Infinity
+      )
+    )
+  );
 
   const forwardRateChartData = {
-    labels: forwardRateLabels,
+    labels: forwardRate.map((item) => item.transaction_date),
     datasets: [
       {
         label: "Secured Forward Rate - Export",
-        data: securedExportData,
+        data: forwardRate.map((item) => item.secured_forward_rate_export),
         borderColor: "#007bff",
+        borderWidth: 2,
         backgroundColor: "rgba(0, 123, 255, 0.1)",
         fill: false,
         tension: 0.4,
-        pointRadius: 4,
-        pointHoverRadius: 6,
+        pointRadius: 0,
+        pointHoverRadius: 3,
         spanGaps: true,
+        order: 1,
       },
       {
         label: "Market Forward Rate - Export",
-        data: marketExportData,
+        data: forwardRate.map((item) => item.market_forward_rate_export),
         borderColor: "#ffc107",
+        borderWidth: 2,
         backgroundColor: "rgba(255, 193, 7, 0.1)",
         fill: false,
         tension: 0.4,
-        pointRadius: 4,
-        pointHoverRadius: 6,
+        pointRadius: 0,
+        pointHoverRadius: 3,
         spanGaps: true,
+        order: 2,
       },
       {
         label: "Secured Forward Rate - Import",
-        data: securedImportData,
+        data: forwardRate.map((item) => item.secured_forward_rate_import),
         borderColor: "#28a745",
+        borderWidth: 2,
         backgroundColor: "rgba(40, 167, 69, 0.1)",
         fill: false,
         tension: 0.4,
-        pointRadius: 4,
-        pointHoverRadius: 6,
+        pointRadius: 0,
+        pointHoverRadius: 3,
         spanGaps: true,
+        order: 3,
       },
       {
         label: "Market Forward Rate - Import",
-        data: marketImportData,
+        data: forwardRate.map((item) => item.market_forward_rate_import),
         borderColor: "#dc3545",
+        borderWidth: 2,
         backgroundColor: "rgba(220, 53, 69, 0.1)",
         fill: false,
         tension: 0.4,
-        pointRadius: 4,
-        pointHoverRadius: 6,
+        pointRadius: 0,
+        pointHoverRadius: 3,
         spanGaps: true,
+        order: 4,
       },
     ],
   };
-  <Line data={forwardRateChartData} options={optionsLine} />;
 
+  const optionsLineDynamic = {
+    responsive: true,
+    maintainAspectRatio: false,
+    interaction: {
+      mode: "index", // or 'nearest'
+      intersect: false,
+    },
+    plugins: {
+      tooltip: {
+        enabled: true,
+        mode: "index",
+        intersect: false,
+        // You can customize display callbacks if needed:
+        callbacks: {
+          label: function (context) {
+            return ` ${context.dataset.label}: ${context.parsed.y.toFixed(4)}`;
+          },
+        },
+      },
+      legend: {
+        labels: {
+          font: {
+            family: "'Roboto', 'Helvetica', 'Arial', sans-serif",
+          },
+        },
+      },
+    },
+    scales: {
+      x: {
+        type: "category",
+        position: "bottom",
+        display: true,
+        title: {
+          display: true,
+          text: "Transaction Date",
+        },
+        grid: {
+          color: "#e9ecef",
+        },
+        ticks: {
+          callback: (value, index) => forwardRate[index]?.transaction_date,
+        },
+      },
+      y: {
+        beginAtZero: false,
+        min: minRate * 0.98,
+        max: maxRate * 1.02,
+        ticks: {
+          stepSize: 0.005,
+        },
+        grid: {
+          color: "#e9ecef",
+        },
+      },
+    },
+    animation: {
+      duration: 800,
+      easing: "easeInOutQuart",
+    },
+  };
   // Tooltip renderer
   const renderTooltip = (props) => (
     <Tooltip id="button-tooltip" {...props}>
@@ -304,7 +454,12 @@ const Market = () => {
                     {item.title}
                   </Card.Title>
                   <Card.Text className="fs-4 fw-bold text-dark">
-                    {item.value !== undefined ? item.value : "Loading..."}
+                    {item.value !== undefined
+                      ? Intl.NumberFormat("fr-FR", {
+                          useGrouping: true, // Adds spaces as thousand separators
+                          maximumFractionDigits: 0, // Removes decimals
+                        }).format(item.value)
+                      : "Loading..."}
                   </Card.Text>
                 </Card.Body>
               </Card>
@@ -315,32 +470,39 @@ const Market = () => {
 
       {/* Monthly Gain and Superperformance Charts */}
       <Row>
-        <Col md={6} className="mb-4" style={{ height: "350px" }}>
+        <Col md={6} className="mb-4">
           <Card className="shadow-sm h-100">
             <Card.Body>
               <Card.Title
                 className="text-center text-dark"
-                style={{ fontSize: "1rem", fontWeight: 500 }}
+                style={{
+                  fontSize: "1rem",
+                  fontWeight: 500,
+                  textTransform: "none",
+                }}
               >
-                Total Transigé & Gain Total par Mois
+                Total transigé & gain total par mois
               </Card.Title>
-              <div>
+              <div style={{ height: "350px" /* ensure enough space */ }}>
                 <Bar data={monthlyBarChartData} options={optionsBar} />
               </div>
             </Card.Body>
           </Card>
         </Col>
-        <Col md={6} className="mb-4" style={{ height: "350px" }}>
+        <Col md={6} className="mb-4">
           <Card className="shadow-sm h-100">
             <Card.Body>
               <Card.Title
-                className="text-center text-dark"
-                style={{ fontSize: "1rem", fontWeight: 500 }}
+                style={{
+                  fontSize: "1rem",
+                  fontWeight: 500,
+                  textTransform: "none",
+                }}
               >
-                Superformance Interbancaire : Taux d'exécution vs Taux
-                Interbancaire
+                Superformance interbancaire : taux d'exécution vs taux
+                interbancaire
               </Card.Title>
-              <div>
+              <div style={{ height: "350px" }}>
                 <Line data={superperformanceChartData} options={optionsLine} />
               </div>
             </Card.Body>
@@ -355,19 +517,26 @@ const Market = () => {
       </Row>
 
       {/* Forward Rate Comparison */}
-      <Row className="mb-4" style={{ height: "350px" }}>
+      <Row className="mb-4">
         <Col md={12}>
           <Card className="shadow-sm h-100">
             <Card.Body>
               <Card.Title
                 className="text-center text-dark"
-                style={{ fontSize: "1rem", fontWeight: 500 }}
+                style={{
+                  fontSize: "1rem",
+                  fontWeight: 500,
+                  textTransform: "none",
+                }}
               >
                 Taux à terme sécurisés vs taux à terme du marché au moment de la
                 transaction
               </Card.Title>
-              <div>
-                <Line data={forwardRateChartData} options={optionsLine} />
+              <div style={{ height: "400px" }}>
+                <Line
+                  data={forwardRateChartData}
+                  options={optionsLineDynamic}
+                />
               </div>
             </Card.Body>
           </Card>
@@ -381,43 +550,50 @@ const Market = () => {
             <Card.Body>
               <Card.Title
                 className="text-center text-dark"
-                style={{ fontSize: "1rem", fontWeight: 500 }}
+                style={{
+                  fontSize: "1rem",
+                  fontWeight: 500,
+                  textTransform: "none",
+                }}
               >
-                Tableau des Gains par Banque
+                Tableau des gains par banque
               </Card.Title>
-              <Table striped bordered hover responsive>
-                <thead>
-                  <tr
-                    className="bg-light text-dark"
-                    style={{ fontSize: "0.9rem" }}
-                  >
-                    <th>Banque</th>
-                    <th>Mois</th>
-                    <th>Total Traded</th>
-                    <th>% Couvert</th>
-                    <th>Gain</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {bankGains.length ? (
-                    bankGains.map((item, index) => (
-                      <tr key={index} style={{ fontSize: "0.9rem" }}>
-                        <td>{item.bank}</td>
-                        <td>{item.month}</td>
-                        <td>{item.total_traded}</td>
-                        <td>{`${item.coverage_percent.toFixed(2)}%`}</td>
-                        <td>{item.gain.toFixed(2)}</td>
-                      </tr>
-                    ))
-                  ) : (
-                    <tr>
-                      <td colSpan="5" className="text-center text-secondary">
-                        Pas de données disponibles
-                      </td>
+              {/* Wrap the Table in a scroll container */}
+              <div style={{ maxHeight: "300px", overflowY: "auto" }}>
+                <Table striped bordered hover responsive>
+                  <thead>
+                    <tr
+                      className="bg-light text-dark"
+                      style={{ fontSize: "0.9rem" }}
+                    >
+                      <th>Banque</th>
+                      <th>Mois</th>
+                      <th>Total Traded</th>
+                      <th>% Couvert</th>
+                      <th>Gain</th>
                     </tr>
-                  )}
-                </tbody>
-              </Table>
+                  </thead>
+                  <tbody>
+                    {bankGains.length ? (
+                      bankGains.map((item, index) => (
+                        <tr key={index} style={{ fontSize: "0.9rem" }}>
+                          <td>{item.bank}</td>
+                          <td>{item.month}</td>
+                          <td>{item.total_traded}</td>
+                          <td>{`${item.coverage_percent.toFixed(2)}%`}</td>
+                          <td>{item.gain.toFixed(2)}</td>
+                        </tr>
+                      ))
+                    ) : (
+                      <tr>
+                        <td colSpan="5" className="text-center text-secondary">
+                          Pas de données disponibles
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </Table>
+              </div>
               <p className="text-muted" style={{ fontSize: "0.8rem" }}>
                 ** Il est important de souligner que le marché interbancaire est
                 exclusivement destiné aux banques. Toutefois, les taux que nous

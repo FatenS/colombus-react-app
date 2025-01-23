@@ -3,12 +3,14 @@ import axios from 'axios';
 import Swal from "sweetalert2";
 import { loginConfirmedAction, Logout } from '../store/actions/AuthActions';
 
-export function signUp(email, password, rating, options) {
+export function signUp(email, password, rating, options, clientName) {
     const postData = {
         email,
         password,
         rating,
-        options, // Sending role as 'options' to the Flask backend
+        options,
+        client_name: clientName, // Include client_name in the payload
+
     };
     return axios.post('http://localhost:5001/admin/signup', postData);
 }

@@ -22,9 +22,9 @@ export const LOADING_TOGGLE_ACTION = '[Loading action] toggle loading';
 export const LOGOUT_ACTION = '[Logout action] logout action';
 
 // Signup action
-export function signupAction(email, password, options, rating, navigate) {
+export function signupAction(email, password, options, rating, clientName, navigate) {
     return (dispatch) => {
-        signUp(email, password, rating, options)
+        signUp(email, password, rating, clientName, options)
             .then((response) => {
                 saveTokenInLocalStorage(response.data);
                 runLogoutTimer(dispatch, response.data.expiresIn * 1000, navigate);

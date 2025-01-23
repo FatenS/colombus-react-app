@@ -18,7 +18,7 @@ const LandingPage = () => {
   return (
     <div className="landing-page">
       {/* Header Section */}
-      <header className="header">
+      <header className="headerr">
         <div className="logo">
           <img src={logoFull} alt="Colombus Capital Logo" />
         </div>

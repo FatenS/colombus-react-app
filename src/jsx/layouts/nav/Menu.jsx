@@ -9,10 +9,10 @@ export const MenuList = [
         title: "Dashboard",
         to: "dashboard",
       },
-      {
-        title: "Dashboard Dark",
-        to: "index-2",
-      },
+      // {
+      //   title: "Dashboard Dark",
+      //   to: "index-2",
+      // },
       // {
       //   title: "Market",
       //   to: "market",
@@ -42,7 +42,7 @@ export const MenuList = [
       //   to: "ico-listing",
       // },
       {
-        title: "Exposure",
+        title: "Simulation",
         to: "p2p",
       },
       {
@@ -163,9 +163,9 @@ export const MenuList = [
             title: "Checkout",
             to: "ecom-checkout",
           },
-           {
-             title: "Invoice",
-             to: "ecom-invoice",
+          {
+            title: "Invoice",
+            to: "ecom-invoice",
           },
           // {
           //   title: "Customers",

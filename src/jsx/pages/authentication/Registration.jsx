@@ -17,11 +17,13 @@ function Register(props) {
   const [password, setPassword] = useState("");
   const [roleId, setRoleId] = useState("");
   const [rating, setRating] = useState("");
+  const [clientName, setClientName] = useState("");
   const [errors, setErrors] = useState({
     email: "",
     password: "",
     role: "",
     rating: "",
+    clientName: "",
   });
 
   const dispatch = useDispatch();
@@ -30,7 +32,18 @@ function Register(props) {
   function onSignUp(e) {
     e.preventDefault();
     let error = false;
-    const errorObj = { email: "", password: "", role: "", rating: "" };
+    const errorObj = {
+      email: "",
+      password: "",
+      role: "",
+      rating: "",
+      clientName: "",
+    };
+
+    if (clientName === "") {
+      errorObj.clientName = "Client Name is Required";
+      error = true;
+    }
 
     if (email === "") {
       errorObj.email = "Email is Required";
@@ -61,7 +74,9 @@ function Register(props) {
     }
 
     dispatch(loadingToggleAction(true));
-    dispatch(signupAction(email, password, roleId, rating, navigate)); // Pass rating to action
+    dispatch(
+      signupAction(email, password, roleId, rating, clientName, navigate)
+    );
   }
 
   return (
@@ -103,6 +118,19 @@ function Register(props) {
                       <div className="text-danger">{errors.role}</div>
                     )}
                   </div>
+                  <div className="form-group">
+                    <label>Client Name</label>
+                    <input
+                      value={clientName}
+                      onChange={(e) => setClientName(e.target.value)} // Update state on input
+                      className="form-control"
+                      placeholder="Enter client name"
+                    />
+                    {errors.clientName && (
+                      <div className="text-danger">{errors.clientName}</div>
+                    )}
+                  </div>
+
                   <div className="form-group">
                     <label className="form-label">Email</label>
                     <input

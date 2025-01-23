@@ -438,14 +438,14 @@ const FutureTrading = () => {
                   <td>
                     {order.transaction_type === "buy" ? (
                       <>
-                        <FaArrowDown
+                        <FaArrowUp
                           style={{ color: "green", marginRight: "5px" }}
                         />
                         Buy
                       </>
                     ) : (
                       <>
-                        <FaArrowUp
+                        <FaArrowDown
                           style={{ color: "red", marginRight: "5px" }}
                         />
                         Sell
@@ -594,7 +594,7 @@ const FutureTrading = () => {
                           orders={orders}
                           isAdmin={isAdmin}
                           onEditClick={handleEditOrderClick}
-                          handleDeleteOrder={handleDeleteOrder} 
+                          handleDeleteOrder={handleDeleteOrder}
                           showRateAndBank={false}
                         />
                       </div>

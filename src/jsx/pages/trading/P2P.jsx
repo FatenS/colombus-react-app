@@ -1,7 +1,5 @@
 import React, { useState, useEffect, useMemo } from "react";
 import Select from "react-select";
-import { Nav, Tab } from "react-bootstrap";
-import { useSelector, useDispatch } from "react-redux";
 import DatePicker from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css";
 import axios from "axios";
@@ -31,113 +29,238 @@ const currencyOptions = [
 ];
 
 const ExposureSummary = () => {
-  const dispatch = useDispatch();
-  const orders = useSelector((state) => state.orderReducer.orders || []);
-  const uploadSuccess = useSelector(
-    (state) => state.orderReducer.uploadSuccess
-  );
+  // ------------------------------------------------
+  // 1) Local states for open positions, forward & var
+  // ------------------------------------------------
+  const [openPositions, setOpenPositions] = useState([]);
   const [forwardData, setForwardData] = useState([]);
   const [varData, setVarData] = useState([]);
+
+  // ------------------------------------------------
+  // 2) Local states for filters
+  // ------------------------------------------------
   const [selectedCurrency, setSelectedCurrency] = useState({
     label: "EUR",
     value: "EUR",
   });
   const [selectedDate, setSelectedDate] = useState(null);
-  const [file, setFile] = useState(null);
-  const [uploadMessage, setUploadMessage] = useState("");
 
-  useEffect(() => {
-    const fetchForwardData = async () => {
-      try {
-        const response = await axios.get(
-          "http://localhost:5001/api/calculate-forward-rate"
-        );
-        setForwardData(response.data);
-      } catch (error) {
-        console.error("Error fetching forward rate data", error);
-      }
+  // ------------------------------------------------
+  // 3) Upload states
+  //    A) For uploading exchange data
+  //    B) For uploading open positions
+  // ------------------------------------------------
+  const [fileExchange, setFileExchange] = useState(null);
+  const [uploadMessageExchange, setUploadMessageExchange] = useState("");
+
+  const [fileOpenPos, setFileOpenPos] = useState(null);
+  const [uploadMessageOpenPos, setUploadMessageOpenPos] = useState("");
+
+  // ------------------------------------------------
+  // Helper: get token from localStorage
+  // ------------------------------------------------
+  const getAuthHeaders = () => {
+    const token = localStorage.getItem("accessToken"); // or "token", etc.
+    return {
+      Authorization: `Bearer ${token}`,
     };
-
-    const fetchVarData = async () => {
-      try {
-        const response = await axios.get(
-          "http://localhost:5001/api/calculate-var"
-        );
-        setVarData(response.data);
-      } catch (error) {
-        console.error("Error fetching VaR data", error);
-      }
-    };
-
-    fetchForwardData();
-    fetchVarData();
-  }, [selectedCurrency, selectedDate, uploadSuccess]);
-
-  const handleFileChange = (e) => {
-    setFile(e.target.files[0]);
   };
 
-  const handleUpload = async () => {
-    if (!file) {
-      setUploadMessage("Please select a file first.");
+  // ------------------------------------------------
+  // 4) Functions to fetch data from backend
+  // ------------------------------------------------
+  const fetchOpenPositions = async () => {
+    try {
+      const response = await axios.get("http://localhost:5001/open-positions", {
+        headers: getAuthHeaders(),
+      });
+      setOpenPositions(response.data);
+    } catch (error) {
+      console.error("Error fetching open positions", error);
+    }
+  };
+
+  const fetchForwardData = async () => {
+    try {
+      const response = await axios.get(
+        "http://localhost:5001/api/calculate-forward-rate",
+        { headers: getAuthHeaders() }
+      );
+      setForwardData(response.data);
+    } catch (error) {
+      console.error("Error fetching forward rate data", error);
+    }
+  };
+
+  const fetchVarData = async () => {
+    try {
+      const response = await axios.get(
+        "http://localhost:5001/api/calculate-var",
+        { headers: getAuthHeaders() }
+      );
+      setVarData(response.data);
+    } catch (error) {
+      console.error("Error fetching VaR data", error);
+    }
+  };
+
+  // ------------------------------------------------
+  // 5) useEffect to fetch data on load & on changes
+  // ------------------------------------------------
+  useEffect(() => {
+    fetchOpenPositions();
+    fetchForwardData();
+    fetchVarData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [
+    selectedCurrency,
+    selectedDate,
+    uploadMessageExchange,
+    uploadMessageOpenPos,
+  ]);
+
+  // ------------------------------------------------
+  // 6) File handlers - Exchange Data
+  // ------------------------------------------------
+  const handleExchangeFileChange = (e) => {
+    setFileExchange(e.target.files[0]);
+  };
+
+  const handleUploadExchange = async () => {
+    if (!fileExchange) {
+      setUploadMessageExchange("Please select an Exchange Data file first.");
       return;
     }
     const formData = new FormData();
-    formData.append("file", file);
+    formData.append("file", fileExchange);
+
     try {
-      await axios.post("http://localhost:5001/admin/upload-file", formData);
-      setUploadMessage("File uploaded successfully.");
-      const fetchForwardData = async () => {
-        const response = await axios.get(
-          "http://localhost:5001/api/calculate-forward-rate"
-        );
-        setForwardData(response.data);
-      };
-      const fetchVarData = async () => {
-        const response = await axios.get(
-          "http://localhost:5001/api/calculate-var"
-        );
-        setVarData(response.data);
-      };
+      await axios.post("http://localhost:5001/admin/upload-file", formData, {
+        headers: {
+          ...getAuthHeaders(),
+          "Content-Type": "multipart/form-data",
+        },
+      });
+
+      setUploadMessageExchange("Exchange Data file uploaded successfully.");
+      // Optionally re-fetch forward & var data
       fetchForwardData();
       fetchVarData();
     } catch (error) {
-      setUploadMessage("Error uploading file. Please try again.");
-      console.error("Error uploading file", error);
+      setUploadMessageExchange(
+        "Error uploading exchange data file. Please try again."
+      );
+      console.error("Error uploading exchange data file", error);
     }
   };
 
+  // ------------------------------------------------
+  // 7) File handlers - Open Positions
+  // ------------------------------------------------
+  const handleOpenPosFileChange = (e) => {
+    setFileOpenPos(e.target.files[0]);
+  };
+
+  const handleUploadOpenPos = async () => {
+    if (!fileOpenPos) {
+      setUploadMessageOpenPos("Please select a file for open positions.");
+      return;
+    }
+    const formData = new FormData();
+    formData.append("file", fileOpenPos);
+
+    try {
+      await axios.post(
+        "http://localhost:5001/upload-open-positions",
+        formData,
+        {
+          headers: {
+            ...getAuthHeaders(),
+            "Content-Type": "multipart/form-data",
+          },
+        }
+      );
+
+      setUploadMessageOpenPos("Open Positions file uploaded successfully.");
+      // Refresh the open positions table
+      fetchOpenPositions();
+    } catch (error) {
+      setUploadMessageOpenPos(
+        "Error uploading open positions file. Please try again."
+      );
+      console.error("Error uploading open positions file", error);
+    }
+  };
+
+  // ------------------------------------------------
+  // 8) Convert function
+  // ------------------------------------------------
+  const handleConvert = async (openPositionId) => {
+    try {
+      await axios.post(
+        `http://localhost:5001/convert-open-position/${openPositionId}`,
+        {},
+        {
+          headers: {
+            ...getAuthHeaders(),
+            "Content-Type": "application/json",
+          },
+        }
+      );
+      alert("Open position converted successfully!");
+      setOpenPositions((prev) =>
+        prev.filter((pos) => pos.id !== openPositionId)
+      );
+    } catch (error) {
+      console.error("Error converting open position:", error);
+      alert("Could not convert open position. See console for details.");
+    }
+  };
+
+  // ------------------------------------------------
+  // 9) Process open positions for the summary table
+  // ------------------------------------------------
   const processedData = useMemo(() => {
-    let filteredOrders = orders.filter(
-      (order) => order.currency === selectedCurrency.value
+    // Filter by currency
+    let filteredPositions = openPositions.filter(
+      (pos) => pos.currency === selectedCurrency.value
     );
+
+    // Filter by date if selected
     if (selectedDate) {
       const formattedSelectedDate = formatDate(selectedDate);
-      filteredOrders = filteredOrders.filter(
-        (order) => order.value_date === formattedSelectedDate
+      filteredPositions = filteredPositions.filter(
+        (pos) => pos.value_date === formattedSelectedDate
       );
     }
 
+    // Summarize
     const dataByDate = {};
     let totalExportSum = 0;
     let totalImportSum = 0;
-    filteredOrders.forEach((order) => {
-      const dateKey = order.value_date;
+
+    filteredPositions.forEach((pos) => {
+      const dateKey = pos.value_date;
       if (!dataByDate[dateKey]) {
         dataByDate[dateKey] = { export: 0, import: 0 };
       }
-      if (order.transaction_type.trim().toLowerCase() === "sell") {
-        dataByDate[dateKey].export += order.amount;
-        totalExportSum += order.amount;
-      } else if (order.transaction_type.trim().toLowerCase() === "buy") {
-        dataByDate[dateKey].import += order.amount;
-        totalImportSum += order.amount;
+
+      const type = pos.transaction_type.trim().toLowerCase();
+      if (type === "sell") {
+        dataByDate[dateKey].export += pos.amount;
+        totalExportSum += pos.amount;
+      } else if (type === "buy") {
+        dataByDate[dateKey].import += pos.amount;
+        totalImportSum += pos.amount;
       }
     });
 
+    // Sort by ascending date
     const dates = Object.keys(dataByDate).sort(
       (a, b) => new Date(a) - new Date(b)
     );
+
+    // Build rows
     const netExposureRow = ["Net Exposure"];
     const exportRow = ["Export"];
     const importRow = ["Import"];
@@ -149,6 +272,7 @@ const ExposureSummary = () => {
       importRow.push(totalImport.toFixed(2));
     });
 
+    // Insert total sums after the first cell
     const totalNetExposure = (totalExportSum - totalImportSum).toFixed(2);
     netExposureRow.splice(1, 0, totalNetExposure);
     exportRow.splice(1, 0, totalExportSum.toFixed(2));
@@ -160,38 +284,72 @@ const ExposureSummary = () => {
       dates,
       netExposureRow,
     };
-  }, [orders, selectedCurrency, selectedDate]);
+  }, [openPositions, selectedCurrency, selectedDate]);
 
+  // ------------------------------------------------
+  // 10) Build chart data with netExposure + VaR
+  // ------------------------------------------------
   const chartData = processedData.dates.map((date, index) => ({
     valueDate: date,
-    netExposure: parseFloat(processedData.netExposureRow[index + 2]),
+    netExposure: parseFloat(processedData.netExposureRow[index + 2]) || 0,
     var1: varData.find((item) => item["Value Date"] === date)?.["VaR 1%"] || 0,
     var5: varData.find((item) => item["Value Date"] === date)?.["VaR 5%"] || 0,
     var10:
       varData.find((item) => item["Value Date"] === date)?.["VaR 10%"] || 0,
   }));
 
+  // ------------------------------------------------
+  // 11) Render
+  // ------------------------------------------------
   return (
     <div className="row">
-      {/* File Upload Section */}
-
-      <div className="col-xl-12">
+      {/* -------------------------------------------------- */}
+      {/* A) Upload EXCHANGE DATA Section                    */}
+      {/* -------------------------------------------------- */}
+      <div className="col-xl-6">
         <div className="card mt-4">
           <div className="card-body">
             <h5 className="card-title">Upload Exchange Data</h5>
             <input
               type="file"
-              onChange={handleFileChange}
+              onChange={handleExchangeFileChange}
               className="form-control mb-3"
             />
-            <button onClick={handleUpload} className="btn btn-primary">
-              Upload File
+            <button onClick={handleUploadExchange} className="btn btn-primary">
+              Upload Exchange Data
             </button>
-            {uploadMessage && <p className="mt-2">{uploadMessage}</p>}
+            {uploadMessageExchange && (
+              <p className="mt-2">{uploadMessageExchange}</p>
+            )}
           </div>
         </div>
       </div>
 
+      {/* -------------------------------------------------- */}
+      {/* B) Upload OPEN POSITIONS Section                  */}
+      {/* -------------------------------------------------- */}
+      <div className="col-xl-6">
+        <div className="card mt-4">
+          <div className="card-body">
+            <h5 className="card-title">Upload Open Positions</h5>
+            <input
+              type="file"
+              onChange={handleOpenPosFileChange}
+              className="form-control mb-3"
+            />
+            <button onClick={handleUploadOpenPos} className="btn btn-primary">
+              Upload Open Positions
+            </button>
+            {uploadMessageOpenPos && (
+              <p className="mt-2">{uploadMessageOpenPos}</p>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* -------------------------------------------------- */}
+      {/* C) Currency & Date Filters                         */}
+      {/* -------------------------------------------------- */}
       <div className="col-xl-12">
         <div className="card">
           <div className="card-header border-0">
@@ -217,7 +375,9 @@ const ExposureSummary = () => {
         </div>
       </div>
 
-      {/* First Exposure Summary Table */}
+      {/* -------------------------------------------------- */}
+      {/* D) Exposure Summary Table                          */}
+      {/* -------------------------------------------------- */}
       <div className="col-xl-12">
         <div className="card">
           <div className="card-body">
@@ -256,7 +416,9 @@ const ExposureSummary = () => {
         </div>
       </div>
 
-      {/* Stacked Bar Chart for Value Date and Net Exposure */}
+      {/* -------------------------------------------------- */}
+      {/* E) Net Exposure & VaR Chart                        */}
+      {/* -------------------------------------------------- */}
       <div className="col-xl-12">
         <div className="card mt-4">
           <div className="card-body">
@@ -288,7 +450,9 @@ const ExposureSummary = () => {
         </div>
       </div>
 
-      {/* Second Table for Forward Rate and VaR Data */}
+      {/* -------------------------------------------------- */}
+      {/* F) Additional Table: Forward Rate + VaR + Convert  */}
+      {/* -------------------------------------------------- */}
       <div className="col-xl-12">
         <div className="card mt-4">
           <div className="card-body">
@@ -303,34 +467,57 @@ const ExposureSummary = () => {
                     <th>Value at Risk 1%</th>
                     <th>Value at Risk 5%</th>
                     <th>Value at Risk 10%</th>
+                    <th>Action</th> {/* NEW: Convert button column */}
                   </tr>
                 </thead>
                 <tbody>
-                  {processedData.dates.map((date, index) => {
-                    const forwardItem = forwardData.find(
-                      (item) => item["Value Date"] === date
-                    );
+                  {forwardData.map((item, idx) => {
+                    const dateVal = item["Value Date"];
+                    const days = item.Days || 0;
+                    const fwdRate = item["Forward Rate"];
+                    const openPosId = item["open_position_id"]; // from backend
+
+                    // For VaR, see if there's a matching var record
                     const varItem = varData.find(
-                      (item) => item["Value Date"] === date
+                      (v) => v["Value Date"] === dateVal
                     );
+
                     return (
-                      <tr key={index}>
-                        <td>{date}</td>
-                        <td>{forwardItem?.Days || "0"}</td>
+                      <tr key={idx}>
+                        <td>{dateVal}</td>
+                        <td>{days}</td>
                         <td>
-                          {selectedCurrency.value === "EUR"
-                            ? `${
-                                forwardItem?.["Forward Rate"].toFixed(4) ||
-                                "N/A"
-                              } `
-                            : `${
-                                forwardItem?.["Forward Rate"].toFixed(4) ||
-                                "N/A"
-                              } `}
+                          {fwdRate !== undefined
+                            ? Number(fwdRate).toFixed(4)
+                            : "N/A"}
                         </td>
-                        <td>{varItem?.["VaR 1%"]?.toFixed(2) || "N/A"}</td>
-                        <td>{varItem?.["VaR 5%"]?.toFixed(2) || "N/A"}</td>
-                        <td>{varItem?.["VaR 10%"]?.toFixed(2) || "N/A"}</td>
+                        <td>
+                          {varItem?.["VaR 1%"] !== undefined
+                            ? varItem["VaR 1%"].toFixed(2)
+                            : "N/A"}
+                        </td>
+                        <td>
+                          {varItem?.["VaR 5%"] !== undefined
+                            ? varItem["VaR 5%"].toFixed(2)
+                            : "N/A"}
+                        </td>
+                        <td>
+                          {varItem?.["VaR 10%"] !== undefined
+                            ? varItem["VaR 10%"].toFixed(2)
+                            : "N/A"}
+                        </td>
+                        <td>
+                          {openPosId ? (
+                            <button
+                              className="btn btn-sm btn-success"
+                              onClick={() => handleConvert(openPosId)}
+                            >
+                              Convert
+                            </button>
+                          ) : (
+                            "N/A"
+                          )}
+                        </td>
                       </tr>
                     );
                   })}
