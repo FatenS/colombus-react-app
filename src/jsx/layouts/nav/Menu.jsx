@@ -134,15 +134,15 @@ export const MenuList = [
       //     },
       //   ],
       // },
-      {
-        title: "Calendar",
-        to: "app-calender",
-      },
-      {
-        title: "Invoice",
-        //to: './',
-        hasMenu: true,
-        content: [
+      // {
+      //   title: "Calendar",
+      //   to: "app-calender",
+      // },
+      // {
+      //   title: "Invoice",
+      //   //to: './',
+      //   hasMenu: true,
+      //   content: [
           // {
           //   title: "Product Grid",
           //   to: "ecom-product-grid",
@@ -159,20 +159,20 @@ export const MenuList = [
           //   title: "Order",
           //   to: "ecom-product-order",
           // },
-          {
-            title: "Checkout",
-            to: "ecom-checkout",
-          },
-          {
-            title: "Invoice",
-            to: "ecom-invoice",
-          },
+          // {
+          //   title: "Checkout",
+          //   to: "ecom-checkout",
+          // },
+          // {
+          //   title: "Invoice",
+          //   to: "ecom-invoice",
+          // },
           // {
           //   title: "Customers",
           //   to: "ecom-customers",
-          // },
-        ],
-      },
+      //     // },
+      //   ],
+      // },
     ],
   },
 

@@ -8,7 +8,8 @@ import {
     updateOrder,
     uploadOrders,
     deleteOrder,
-    updateOrderClient,
+    updateOrderClient,fetchPremiumRates,createPremiumRate ,updatePremiumRate,deletePremiumRate
+
 } from '../../services/OrderService';
 
 // Action types
@@ -19,6 +20,59 @@ export const UPDATE_MARKET_ORDERS = 'UPDATE_MARKET_ORDERS'; // New action
 export const ORDER_FAILURE = 'ORDER_FAILURE';
 export const UPLOAD_ORDERS_SUCCESS = 'UPLOAD_ORDERS_SUCCESS';
 export const UPLOAD_ORDERS_FAILURE = 'UPLOAD_ORDERS_FAILURE';
+
+// Action types for premium rates
+export const FETCH_PREMIUM_RATES_SUCCESS = 'FETCH_PREMIUM_RATES_SUCCESS';
+export const CREATE_PREMIUM_RATE_SUCCESS = 'CREATE_PREMIUM_RATE_SUCCESS';
+export const UPDATE_PREMIUM_RATE_SUCCESS = 'UPDATE_PREMIUM_RATE_SUCCESS';
+export const DELETE_PREMIUM_RATE_SUCCESS = 'DELETE_PREMIUM_RATE_SUCCESS';
+
+// Fetch premium rates (admin only)
+export const fetchPremiumRatesAction = () => async (dispatch) => {
+    try {
+        const response = await fetchPremiumRates();
+        dispatch({ type: FETCH_PREMIUM_RATES_SUCCESS, payload: response.data });
+    } catch (error) {
+        console.error("Error fetching premium rates:", error);
+        dispatch({ type: ORDER_FAILURE, payload: 'Error fetching premium rates' });
+    }
+};
+
+// Create premium rate (admin only)
+export const createPremiumRateAction = (rateData) => async (dispatch) => {
+    try {
+        const response = await createPremiumRate(rateData);
+        dispatch({ type: CREATE_PREMIUM_RATE_SUCCESS, payload: response.data });
+        dispatch(fetchPremiumRatesAction()); // Refetch premium rates after creation
+    } catch (error) {
+        console.error("Error creating premium rate:", error);
+        dispatch({ type: ORDER_FAILURE, payload: 'Error creating premium rate' });
+    }
+};
+
+// Update premium rate (admin only)
+export const updatePremiumRateAction = (rateId, rateData) => async (dispatch) => {
+    try {
+        const response = await updatePremiumRate(rateId, rateData);
+        dispatch({ type: UPDATE_PREMIUM_RATE_SUCCESS, payload: response.data });
+        dispatch(fetchPremiumRatesAction()); // Refetch premium rates after update
+    } catch (error) {
+        console.error("Error updating premium rate:", error);
+        dispatch({ type: ORDER_FAILURE, payload: 'Error updating premium rate' });
+    }
+};
+
+// Delete premium rate (admin only)
+export const deletePremiumRateAction = (rateId) => async (dispatch) => {
+    try {
+        await deletePremiumRate(rateId);
+        dispatch({ type: DELETE_PREMIUM_RATE_SUCCESS, payload: rateId });
+        dispatch(fetchPremiumRatesAction()); // Refetch premium rates after deletion
+    } catch (error) {
+        console.error("Error deleting premium rate:", error);
+        dispatch({ type: ORDER_FAILURE, payload: 'Error deleting premium rate' });
+    }
+};
 
 // Fetch orders based on role (client or admin)
 export const fetchOrdersAction = (isAdmin) => async (dispatch) => {
@@ -43,15 +97,25 @@ export const fetchMatchedOrdersAction = () => async (dispatch) => {
 };
 
 // Submit order (client)
+// Submit order (client)
 export const submitOrderAction = (orderData) => async (dispatch) => {
     try {
-        await submitOrder(orderData);  // Call the service to submit the order
-        dispatch(fetchOrdersAction(false));  // Refetch orders after submission
+        // 1) Get the full Axios response (with data, status, etc.)
+        const response = await submitOrder(orderData);
+
+        // 2) Optionally refetch the list of orders
+        dispatch(fetchOrdersAction(false));
+
+        // 3) Return the actual response so the component can read `res.data`
+        return response;
     } catch (error) {
         console.error("Error submitting order:", error);
-        dispatch({ type: ORDER_FAILURE, payload: 'Error submitting order' });
+        dispatch({ type: ORDER_FAILURE, payload: "Error submitting order" });
+        // Rethrow so the .catch in your component can see the error
+        throw error;
     }
 };
+
 
 
 // Update order (admin)

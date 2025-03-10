@@ -24,7 +24,7 @@ export const LOGOUT_ACTION = '[Logout action] logout action';
 // Signup action
 export function signupAction(email, password, options, rating, clientName, navigate) {
     return (dispatch) => {
-        signUp(email, password, rating, clientName, options)
+        signUp(email, password, options, rating, clientName)
             .then((response) => {
                 saveTokenInLocalStorage(response.data);
                 runLogoutTimer(dispatch, response.data.expiresIn * 1000, navigate);

@@ -17,6 +17,14 @@ import {
   fetchBankGains,
 } from "../../../store/actions/DashboardActions";
 
+// Helper to determine if we have 2 or more valid (non-null/undefined) data points
+function hasEnoughPoints(dataArray = []) {
+  const validPoints = dataArray.filter(
+    (val) => val !== null && val !== undefined
+  );
+  return validPoints.length >= 2;
+}
+
 const Market = () => {
   const dispatch = useDispatch();
   const [selectedCurrency, setSelectedCurrency] = useState({
@@ -40,44 +48,26 @@ const Market = () => {
   ];
 
   /**
-   * ----------------------------------------------------------------
-   * 1) MONTHLY BAR + LINE CHART (Total Transigé & Gain total par mois)
-   * ----------------------------------------------------------------
+   * ---------------------------------------------------
+   * 1) STACKED BAR: Total Transigé & Gain total par mois
+   * ---------------------------------------------------
    */
-
-  // Ensure the line dataset renders above the bars by using 'order' property.
-  // Also, set maintainAspectRatio to false for more flexible sizing,
-  // and you can adjust 'aspectRatio' if you still want a certain ratio.
   const optionsBar = {
     responsive: true,
-    maintainAspectRatio: false, // let the parent container control the height
-    aspectRatio: 1.5, // tweak as desired (won't matter if maintainAspectRatio is false)
+    maintainAspectRatio: false,
+    aspectRatio: 1.5,
     scales: {
       x: {
+        stacked: true,
         grid: {
           color: "#e9ecef",
         },
       },
       y: {
         beginAtZero: true,
+        stacked: true,
         grid: {
           color: "#e9ecef",
-        },
-        position: "left",
-        title: {
-          display: true,
-          text: "Total transigé (TND)",
-        },
-      },
-      y1: {
-        beginAtZero: true,
-        grid: {
-          drawOnChartArea: false,
-        },
-        position: "right",
-        title: {
-          display: true,
-          text: "Gain total (TND)",
         },
         ticks: {
           callback: (value) => `${value.toLocaleString()} TND`,
@@ -99,42 +89,34 @@ const Market = () => {
     },
   };
 
-  // Bar + Line combined data. We add `order` so the line is on top (higher order).
   const monthlyBarChartData = {
     labels: summary.months || [],
     datasets: [
       {
         label: "Total transigé en TND",
         data: summary.monthlyTotalTransacted || [],
-        backgroundColor: "rgba(70, 130, 180, 0.6)", // Slightly transparent
+        backgroundColor: "rgba(70, 130, 180, 0.6)",
         borderColor: "#315f82",
         borderWidth: 1,
-        yAxisID: "y",
-        order: 1, // Bars behind
-        barPercentage: 1, // tweak bar thickness
+        stack: "combined",
       },
       {
         label: "Gain total en TND",
         data: summary.monthlyTotalGain || [],
-        type: "line",
+        backgroundColor: "rgba(255, 99, 132, 0.6)",
         borderColor: "#FF6347",
-        borderWidth: 2,
-        backgroundColor: "rgba(255, 99, 132, 0.1)",
-        fill: true,
-        tension: 0.3,
-        yAxisID: "y1",
-        order: 2, // Line on top
+        borderWidth: 1,
+        stack: "combined",
       },
     ],
   };
 
   /**
-   * ------------------------------------------------------
-   * 2) SUPERPERFORMANCE LINE CHART (Taux d'exécution vs Taux interbancaire)
-   * ------------------------------------------------------
+   * --------------------------------------------------------
+   * 2) SUPERPERFORMANCE: (Taux d'exécution vs Taux interbancaire)
+   * --------------------------------------------------------
    */
 
-  // Dynamically compute min & max for a bit of padding so lines aren’t too close.
   const superPerfValues =
     Array.isArray(superperformanceTrend) && superperformanceTrend.length
       ? superperformanceTrend.flatMap((item) => [
@@ -146,11 +128,14 @@ const Market = () => {
   const superPerfMin = Math.min(...superPerfValues);
   const superPerfMax = Math.max(...superPerfValues);
 
-  // Here we give some extra headroom: 0.98 to 1.02
   const optionsLine = {
     responsive: true,
     maintainAspectRatio: false,
     aspectRatio: 1.5,
+    interaction: {
+      mode: "index",
+      intersect: false,
+    },
     scales: {
       x: {
         grid: {
@@ -185,6 +170,18 @@ const Market = () => {
     },
   };
 
+  // Build your superperformance dataset arrays:
+  const executionData = Array.isArray(superperformanceTrend)
+    ? superperformanceTrend.map((item) => item.execution_rate)
+    : [];
+  const interbankData = Array.isArray(superperformanceTrend)
+    ? superperformanceTrend.map((item) => item.interbank_rate)
+    : [];
+
+  // Decide whether to show lines or points for each dataset:
+  const execHasMultiple = hasEnoughPoints(executionData);
+  const interbankHasMultiple = hasEnoughPoints(interbankData);
+
   const superperformanceChartData = {
     labels: Array.isArray(superperformanceTrend)
       ? superperformanceTrend.map((item) => item.date)
@@ -192,27 +189,29 @@ const Market = () => {
     datasets: [
       {
         label: "Taux d'exécution",
-        data: Array.isArray(superperformanceTrend)
-          ? superperformanceTrend.map((item) => item.execution_rate)
-          : [],
+        data: executionData,
         borderColor: "#007bff",
         borderWidth: 2,
         fill: false,
         tension: 0.3,
-        pointRadius: 0,
-        pointHoverRadius: 3,
+        // If at least 2 data points, draw a line & hide points. If 1 point, show the point, no line.
+        showLine: execHasMultiple, // if >=2 points => line
+        spanGaps: execHasMultiple,
+        pointRadius: execHasMultiple ? 0 : 4,
+        pointHoverRadius: 5,
       },
       {
         label: "Taux interbancaire",
-        data: Array.isArray(superperformanceTrend)
-          ? superperformanceTrend.map((item) => item.interbank_rate)
-          : [],
+        data: interbankData,
         borderColor: "#ff7f50",
         borderWidth: 2,
         fill: false,
         tension: 0.3,
-        pointRadius: 0,
-        pointHoverRadius: 3,
+        borderDash: [5, 5],
+        showLine: interbankHasMultiple,
+        spanGaps: interbankHasMultiple,
+        pointRadius: interbankHasMultiple ? 0 : 4,
+        pointHoverRadius: 5,
       },
     ],
   };
@@ -222,8 +221,6 @@ const Market = () => {
    * 3) FORWARD RATE LINE CHART (Secured vs Market Rates)
    * ---------------------------------------------------
    */
-
-  // Grab the min & max from all 4 lines:
   const minRate = Math.min(
     ...forwardRate.map((item) =>
       Math.min(
@@ -246,59 +243,84 @@ const Market = () => {
     )
   );
 
+  // We'll apply the same logic for each sub-dataset in forwardRate:
+  // 1) Collect the data
+  const securedExportData = forwardRate.map(
+    (item) => item.secured_forward_rate_export
+  );
+  const marketExportData = forwardRate.map(
+    (item) => item.market_forward_rate_export
+  );
+  const securedImportData = forwardRate.map(
+    (item) => item.secured_forward_rate_import
+  );
+  const marketImportData = forwardRate.map(
+    (item) => item.market_forward_rate_import
+  );
+
+  // 2) Decide for each if we show line or points
+  const hasSecuredExportMulti = hasEnoughPoints(securedExportData);
+  const hasMarketExportMulti = hasEnoughPoints(marketExportData);
+  const hasSecuredImportMulti = hasEnoughPoints(securedImportData);
+  const hasMarketImportMulti = hasEnoughPoints(marketImportData);
+
   const forwardRateChartData = {
     labels: forwardRate.map((item) => item.transaction_date),
     datasets: [
       {
         label: "Secured Forward Rate - Export",
-        data: forwardRate.map((item) => item.secured_forward_rate_export),
+        data: securedExportData,
         borderColor: "#007bff",
         borderWidth: 2,
         backgroundColor: "rgba(0, 123, 255, 0.1)",
         fill: false,
         tension: 0.4,
-        pointRadius: 0,
-        pointHoverRadius: 3,
-        spanGaps: true,
+        showLine: hasSecuredExportMulti,
+        spanGaps: hasSecuredExportMulti,
+        pointRadius: hasSecuredExportMulti ? 0 : 4,
+        pointHoverRadius: 5,
         order: 1,
       },
       {
         label: "Market Forward Rate - Export",
-        data: forwardRate.map((item) => item.market_forward_rate_export),
+        data: marketExportData,
         borderColor: "#ffc107",
         borderWidth: 2,
         backgroundColor: "rgba(255, 193, 7, 0.1)",
         fill: false,
         tension: 0.4,
-        pointRadius: 0,
-        pointHoverRadius: 3,
-        spanGaps: true,
+        showLine: hasMarketExportMulti,
+        spanGaps: hasMarketExportMulti,
+        pointRadius: hasMarketExportMulti ? 0 : 4,
+        pointHoverRadius: 5,
         order: 2,
       },
       {
         label: "Secured Forward Rate - Import",
-        data: forwardRate.map((item) => item.secured_forward_rate_import),
+        data: securedImportData,
         borderColor: "#28a745",
         borderWidth: 2,
         backgroundColor: "rgba(40, 167, 69, 0.1)",
         fill: false,
         tension: 0.4,
-        pointRadius: 0,
-        pointHoverRadius: 3,
-        spanGaps: true,
+        showLine: hasSecuredImportMulti,
+        spanGaps: hasSecuredImportMulti,
+        pointRadius: hasSecuredImportMulti ? 0 : 4,
+        pointHoverRadius: 5,
         order: 3,
       },
       {
         label: "Market Forward Rate - Import",
-        data: forwardRate.map((item) => item.market_forward_rate_import),
+        data: marketImportData,
         borderColor: "#dc3545",
         borderWidth: 2,
         backgroundColor: "rgba(220, 53, 69, 0.1)",
         fill: false,
         tension: 0.4,
-        pointRadius: 0,
-        pointHoverRadius: 3,
-        spanGaps: true,
+        showLine: hasMarketImportMulti,
+        spanGaps: hasMarketImportMulti,
+        pointRadius: hasMarketImportMulti ? 0 : 4,
+        pointHoverRadius: 5,
         order: 4,
       },
     ],
@@ -308,7 +330,7 @@ const Market = () => {
     responsive: true,
     maintainAspectRatio: false,
     interaction: {
-      mode: "index", // or 'nearest'
+      mode: "index",
       intersect: false,
     },
     plugins: {
@@ -316,7 +338,6 @@ const Market = () => {
         enabled: true,
         mode: "index",
         intersect: false,
-        // You can customize display callbacks if needed:
         callbacks: {
           label: function (context) {
             return ` ${context.dataset.label}: ${context.parsed.y.toFixed(4)}`;
@@ -364,7 +385,8 @@ const Market = () => {
       easing: "easeInOutQuart",
     },
   };
-  // Tooltip renderer
+
+  // Tooltip for the summary cards
   const renderTooltip = (props) => (
     <Tooltip id="button-tooltip" {...props}>
       Plus de détails
@@ -456,8 +478,8 @@ const Market = () => {
                   <Card.Text className="fs-4 fw-bold text-dark">
                     {item.value !== undefined
                       ? Intl.NumberFormat("fr-FR", {
-                          useGrouping: true, // Adds spaces as thousand separators
-                          maximumFractionDigits: 0, // Removes decimals
+                          useGrouping: true,
+                          maximumFractionDigits: 0,
                         }).format(item.value)
                       : "Loading..."}
                   </Card.Text>
@@ -468,7 +490,7 @@ const Market = () => {
         ))}
       </Row>
 
-      {/* Monthly Gain and Superperformance Charts */}
+      {/* Monthly (Bar) and Superperformance (Line) Charts */}
       <Row>
         <Col md={6} className="mb-4">
           <Card className="shadow-sm h-100">
@@ -483,7 +505,7 @@ const Market = () => {
               >
                 Total transigé & gain total par mois
               </Card.Title>
-              <div style={{ height: "350px" /* ensure enough space */ }}>
+              <div style={{ height: "350px" }}>
                 <Bar data={monthlyBarChartData} options={optionsBar} />
               </div>
             </Card.Body>
@@ -533,10 +555,7 @@ const Market = () => {
                 transaction
               </Card.Title>
               <div style={{ height: "400px" }}>
-                <Line
-                  data={forwardRateChartData}
-                  options={optionsLineDynamic}
-                />
+                <Line data={forwardRateChartData} options={optionsLineDynamic} />
               </div>
             </Card.Body>
           </Card>
@@ -558,7 +577,6 @@ const Market = () => {
               >
                 Tableau des gains par banque
               </Card.Title>
-              {/* Wrap the Table in a scroll container */}
               <div style={{ maxHeight: "300px", overflowY: "auto" }}>
                 <Table striped bordered hover responsive>
                   <thead>

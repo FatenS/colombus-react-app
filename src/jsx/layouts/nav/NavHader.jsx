@@ -20,7 +20,16 @@ const NavHader = () => {
         className="brand-logo"
         style={{ backgroundColor: "white" }}
       >
-        <img src={logoFull} alt="" />
+        <img
+  src={logoFull}
+  alt=""
+  style={{
+    width: "150px",
+    height: "auto",
+    objectFit: "contain",
+  }}
+/>
+
       </Link>
 
       <div

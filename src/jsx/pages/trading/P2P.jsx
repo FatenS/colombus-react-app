@@ -12,6 +12,7 @@ import {
   Legend,
   CartesianGrid,
   ResponsiveContainer,
+  Label,
 } from "recharts";
 
 // Utility to format date to YYYY-MM-DD
@@ -46,13 +47,8 @@ const ExposureSummary = () => {
   const [selectedDate, setSelectedDate] = useState(null);
 
   // ------------------------------------------------
-  // 3) Upload states
-  //    A) For uploading exchange data
-  //    B) For uploading open positions
+  // 3) Upload state (only for open positions)
   // ------------------------------------------------
-  const [fileExchange, setFileExchange] = useState(null);
-  const [uploadMessageExchange, setUploadMessageExchange] = useState("");
-
   const [fileOpenPos, setFileOpenPos] = useState(null);
   const [uploadMessageOpenPos, setUploadMessageOpenPos] = useState("");
 
@@ -60,7 +56,7 @@ const ExposureSummary = () => {
   // Helper: get token from localStorage
   // ------------------------------------------------
   const getAuthHeaders = () => {
-    const token = localStorage.getItem("accessToken"); // or "token", etc.
+    const token = localStorage.getItem("accessToken");
     return {
       Authorization: `Bearer ${token}`,
     };
@@ -112,50 +108,10 @@ const ExposureSummary = () => {
     fetchForwardData();
     fetchVarData();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [
-    selectedCurrency,
-    selectedDate,
-    uploadMessageExchange,
-    uploadMessageOpenPos,
-  ]);
+  }, [selectedCurrency, selectedDate, uploadMessageOpenPos]);
 
   // ------------------------------------------------
-  // 6) File handlers - Exchange Data
-  // ------------------------------------------------
-  const handleExchangeFileChange = (e) => {
-    setFileExchange(e.target.files[0]);
-  };
-
-  const handleUploadExchange = async () => {
-    if (!fileExchange) {
-      setUploadMessageExchange("Please select an Exchange Data file first.");
-      return;
-    }
-    const formData = new FormData();
-    formData.append("file", fileExchange);
-
-    try {
-      await axios.post("http://localhost:5001/admin/upload-file", formData, {
-        headers: {
-          ...getAuthHeaders(),
-          "Content-Type": "multipart/form-data",
-        },
-      });
-
-      setUploadMessageExchange("Exchange Data file uploaded successfully.");
-      // Optionally re-fetch forward & var data
-      fetchForwardData();
-      fetchVarData();
-    } catch (error) {
-      setUploadMessageExchange(
-        "Error uploading exchange data file. Please try again."
-      );
-      console.error("Error uploading exchange data file", error);
-    }
-  };
-
-  // ------------------------------------------------
-  // 7) File handlers - Open Positions
+  // 6) File handlers - Open Positions
   // ------------------------------------------------
   const handleOpenPosFileChange = (e) => {
     setFileOpenPos(e.target.files[0]);
@@ -163,37 +119,30 @@ const ExposureSummary = () => {
 
   const handleUploadOpenPos = async () => {
     if (!fileOpenPos) {
-      setUploadMessageOpenPos("Please select a file for open positions.");
+      setUploadMessageOpenPos("Please select a file first.");
       return;
     }
     const formData = new FormData();
     formData.append("file", fileOpenPos);
 
     try {
-      await axios.post(
-        "http://localhost:5001/upload-open-positions",
-        formData,
-        {
-          headers: {
-            ...getAuthHeaders(),
-            "Content-Type": "multipart/form-data",
-          },
-        }
-      );
+      await axios.post("http://localhost:5001/upload-open-positions", formData, {
+        headers: {
+          ...getAuthHeaders(),
+          "Content-Type": "multipart/form-data",
+        },
+      });
 
       setUploadMessageOpenPos("Open Positions file uploaded successfully.");
-      // Refresh the open positions table
       fetchOpenPositions();
     } catch (error) {
-      setUploadMessageOpenPos(
-        "Error uploading open positions file. Please try again."
-      );
+      setUploadMessageOpenPos("Error uploading file. Please try again.");
       console.error("Error uploading open positions file", error);
     }
   };
 
   // ------------------------------------------------
-  // 8) Convert function
+  // 7) Convert function for open positions
   // ------------------------------------------------
   const handleConvert = async (openPositionId) => {
     try {
@@ -208,25 +157,24 @@ const ExposureSummary = () => {
         }
       );
       alert("Open position converted successfully!");
-      setOpenPositions((prev) =>
-        prev.filter((pos) => pos.id !== openPositionId)
-      );
+      setOpenPositions((prev) => prev.filter((pos) => pos.id !== openPositionId));
     } catch (error) {
       console.error("Error converting open position:", error);
-      alert("Could not convert open position. See console for details.");
+      alert("Could not convert open position. Check console for details.");
     }
   };
 
   // ------------------------------------------------
-  // 9) Process open positions for the summary table
+  // 8) Process open positions for the summary table
   // ------------------------------------------------
+  const formatValue = (val) =>
+    selectedCurrency.value === "EUR" ? `${val} €` : `$${val}`;
+
   const processedData = useMemo(() => {
-    // Filter by currency
     let filteredPositions = openPositions.filter(
       (pos) => pos.currency === selectedCurrency.value
     );
 
-    // Filter by date if selected
     if (selectedDate) {
       const formattedSelectedDate = formatDate(selectedDate);
       filteredPositions = filteredPositions.filter(
@@ -234,7 +182,6 @@ const ExposureSummary = () => {
       );
     }
 
-    // Summarize
     const dataByDate = {};
     let totalExportSum = 0;
     let totalImportSum = 0;
@@ -255,12 +202,10 @@ const ExposureSummary = () => {
       }
     });
 
-    // Sort by ascending date
     const dates = Object.keys(dataByDate).sort(
       (a, b) => new Date(a) - new Date(b)
     );
 
-    // Build rows
     const netExposureRow = ["Net Exposure"];
     const exportRow = ["Export"];
     const importRow = ["Import"];
@@ -272,7 +217,6 @@ const ExposureSummary = () => {
       importRow.push(totalImport.toFixed(2));
     });
 
-    // Insert total sums after the first cell
     const totalNetExposure = (totalExportSum - totalImportSum).toFixed(2);
     netExposureRow.splice(1, 0, totalNetExposure);
     exportRow.splice(1, 0, totalExportSum.toFixed(2));
@@ -287,7 +231,7 @@ const ExposureSummary = () => {
   }, [openPositions, selectedCurrency, selectedDate]);
 
   // ------------------------------------------------
-  // 10) Build chart data with netExposure + VaR
+  // 9) Build chart data with netExposure + VaR
   // ------------------------------------------------
   const chartData = processedData.dates.map((date, index) => ({
     valueDate: date,
@@ -298,231 +242,276 @@ const ExposureSummary = () => {
       varData.find((item) => item["Value Date"] === date)?.["VaR 10%"] || 0,
   }));
 
-  // ------------------------------------------------
-  // 11) Render
-  // ------------------------------------------------
   return (
-    <div className="row">
-      {/* -------------------------------------------------- */}
-      {/* A) Upload EXCHANGE DATA Section                    */}
-      {/* -------------------------------------------------- */}
-      <div className="col-xl-6">
-        <div className="card mt-4">
-          <div className="card-body">
-            <h5 className="card-title">Upload Exchange Data</h5>
-            <input
-              type="file"
-              onChange={handleExchangeFileChange}
-              className="form-control mb-3"
-            />
-            <button onClick={handleUploadExchange} className="btn btn-primary">
-              Upload Exchange Data
-            </button>
-            {uploadMessageExchange && (
-              <p className="mt-2">{uploadMessageExchange}</p>
-            )}
-          </div>
+    <div className="container-fluid" style={{ maxWidth: "1200px" }}>
+      {/* (Optional) Page Title */}
+      {/* <div className="row mt-4 mb-3">
+        <div className="col-12">
+          <h3 className="text-center" style={{ fontWeight: 600 }}>
+            Exposure Summary & VaR
+          </h3>
         </div>
-      </div>
+      </div> */}
 
-      {/* -------------------------------------------------- */}
-      {/* B) Upload OPEN POSITIONS Section                  */}
-      {/* -------------------------------------------------- */}
-      <div className="col-xl-6">
-        <div className="card mt-4">
-          <div className="card-body">
-            <h5 className="card-title">Upload Open Positions</h5>
-            <input
-              type="file"
-              onChange={handleOpenPosFileChange}
-              className="form-control mb-3"
-            />
-            <button onClick={handleUploadOpenPos} className="btn btn-primary">
-              Upload Open Positions
-            </button>
-            {uploadMessageOpenPos && (
-              <p className="mt-2">{uploadMessageOpenPos}</p>
-            )}
-          </div>
-        </div>
-      </div>
+      {/* (A) Filters & Upload in a single card */}
+      <div className="row mb-4">
+        <div className="col-12">
+          <div className="card shadow-sm">
+            <div className="card-body">
+              <h5 className="card-title mb-4" style={{ fontWeight: 500 }}>
+                Filters & Upload
+              </h5>
+              <div className="row">
+                {/* Left: Currency and Date */}
+                <div className="col-lg-6 col-md-12 mb-3">
+                  <label htmlFor="currencySelect" className="mb-1 text-muted">
+                    Currency
+                  </label>
+                  <Select
+                    id="currencySelect"
+                    className="mb-3"
+                    options={currencyOptions}
+                    value={selectedCurrency}
+                    onChange={setSelectedCurrency}
+                    isSearchable={false}
+                  />
 
-      {/* -------------------------------------------------- */}
-      {/* C) Currency & Date Filters                         */}
-      {/* -------------------------------------------------- */}
-      <div className="col-xl-12">
-        <div className="card">
-          <div className="card-header border-0">
-            <div className="d-flex flex-wrap">
-              <Select
-                className="custom-react-select p2p-select width-100 mb-2"
-                options={currencyOptions}
-                value={selectedCurrency}
-                onChange={setSelectedCurrency}
-                isSearchable={false}
-              />
-              <div className="ml-2 mb-2">
-                <DatePicker
-                  selected={selectedDate}
-                  onChange={setSelectedDate}
-                  dateFormat="yyyy-MM-dd"
-                  placeholderText="Select a date"
-                  className="form-control"
-                />
+                  <label htmlFor="datePicker" className="mb-1 text-muted">
+                    Value Date
+                  </label>
+                  <DatePicker
+                    id="datePicker"
+                    selected={selectedDate}
+                    onChange={setSelectedDate}
+                    dateFormat="yyyy-MM-dd"
+                    placeholderText="Select a date"
+                    className="form-control"
+                  />
+                </div>
+
+                {/* Right: Upload Open Positions */}
+                <div className="col-lg-6 col-md-12">
+                  <label htmlFor="fileOpenPos" className="mb-1 text-muted">
+                    Open Positions File
+                  </label>
+                  <input
+                    id="fileOpenPos"
+                    type="file"
+                    onChange={handleOpenPosFileChange}
+                    className="form-control mb-2"
+                  />
+                  <button
+                    onClick={handleUploadOpenPos}
+                    className="btn btn-primary"
+                  >
+                    Upload
+                  </button>
+                  {uploadMessageOpenPos && (
+                    <p className="mt-2 text-info">{uploadMessageOpenPos}</p>
+                  )}
+                </div>
               </div>
             </div>
           </div>
         </div>
       </div>
 
-      {/* -------------------------------------------------- */}
-      {/* D) Exposure Summary Table                          */}
-      {/* -------------------------------------------------- */}
-      <div className="col-xl-12">
-        <div className="card">
-          <div className="card-body">
-            <h4 className="card-title">Exposure Summary</h4>
-            <div className="table-responsive mt-4">
-              <table className="table table-bordered">
-                <thead>
-                  <tr>
-                    {processedData.headers.map((header, index) => (
-                      <th key={index}>{header}</th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {processedData.rows.map((row, rowIndex) => (
-                    <tr key={rowIndex}>
-                      {row.map((cell, cellIndex) => (
-                        <td key={cellIndex}>
-                          {cellIndex === 0 ? (
-                            <strong>{cell}</strong>
-                          ) : (
-                            <>
-                              {selectedCurrency.value === "EUR"
-                                ? `${cell} €`
-                                : `$${cell}`}
-                            </>
-                          )}
-                        </td>
+      {/* (B) Exposure Summary Table */}
+      <div className="row mb-4">
+        <div className="col-12">
+          <div className="card shadow-sm">
+            <div className="card-body">
+              <h4 className="card-title mb-3" style={{ fontWeight: 500 }}>
+                Exposure Summary
+              </h4>
+              <div className="table-responsive mt-3">
+                <table className="table table-bordered">
+                  <thead>
+                    <tr>
+                      {processedData.headers.map((header, idx) => (
+                        <th key={idx}>{header}</th>
                       ))}
                     </tr>
-                  ))}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody>
+                    {processedData.rows.map((row, rowIndex) => (
+                      <tr key={rowIndex}>
+                        {row.map((cell, cellIndex) => (
+                          <td key={cellIndex}>
+                            {cellIndex === 0 ? (
+                              <strong>{cell}</strong>
+                            ) : (
+                              <>{formatValue(cell)}</>
+                            )}
+                          </td>
+                        ))}
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
             </div>
           </div>
         </div>
       </div>
 
-      {/* -------------------------------------------------- */}
-      {/* E) Net Exposure & VaR Chart                        */}
-      {/* -------------------------------------------------- */}
-      <div className="col-xl-12">
-        <div className="card mt-4">
-          <div className="card-body">
-            <h5 className="card-title">Net Exposure and VaR Over Time</h5>
-            <ResponsiveContainer width="100%" height={400}>
-              <BarChart data={chartData}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="valueDate" />
-                <YAxis />
-                <Tooltip />
-                <Legend />
-                <Bar
-                  dataKey="netExposure"
-                  fill="#8884d8"
-                  stackId="a"
-                  name="Net Exposure"
-                />
-                <Bar dataKey="var1" fill="#FF6666" stackId="a" name="VaR 1%" />
-                <Bar dataKey="var5" fill="#E60000" stackId="a" name="VaR 5%" />
-                <Bar
-                  dataKey="var10"
-                  fill="#990000"
-                  stackId="a"
-                  name="VaR 10%"
-                />
-              </BarChart>
-            </ResponsiveContainer>
+      {/* (C) Net Exposure & VaR Chart */}
+      <div className="row mb-4">
+        <div className="col-12">
+          <div className="card shadow-sm">
+            <div className="card-body">
+              <h5 className="card-title mb-3" style={{ fontWeight: 500 }}>
+                Net Exposure & VaR
+              </h5>
+              <div style={{ width: "100%", height: 400 }}>
+                <ResponsiveContainer>
+                  <BarChart data={chartData}>
+                    <CartesianGrid strokeDasharray="3 3" />
+
+                    {/* X-axis with label */}
+                    <XAxis dataKey="valueDate">
+                      <Label
+                        offset={-5}
+                        position="insideBottom"
+                      />
+                    </XAxis>
+
+                    {/* Left axis for Net Exposure with label */}
+                    <YAxis yAxisId="leftAxis">
+                      <Label
+                        value="Net Exposure"
+                        angle={-90}
+                        position="insideLeft"
+                        style={{ textAnchor: "middle" }}
+                      />
+                    </YAxis>
+
+                    {/* Right axis for VaR with label */}
+                    <YAxis yAxisId="rightAxis" orientation="right">
+                      <Label
+                        value="VaR"
+                        angle={90}
+                        position="insideRight"
+                        style={{ textAnchor: "middle" }}
+                      />
+                    </YAxis>
+
+                    <Tooltip />
+                    <Legend />
+
+                    {/* Net Exposure on left axis */}
+                    <Bar
+                      dataKey="netExposure"
+                      fill="#8884d8"
+                      yAxisId="leftAxis"
+                      name="Net Exposure"
+                    />
+
+                    {/* VaR bars stacked on the right axis */}
+                    <Bar
+                      dataKey="var1"
+                      fill="#FF6666"
+                      stackId="varStack"
+                      yAxisId="rightAxis"
+                      name="VaR 1%"
+                    />
+                    <Bar
+                      dataKey="var5"
+                      fill="#E60000"
+                      stackId="varStack"
+                      yAxisId="rightAxis"
+                      name="VaR 5%"
+                    />
+                    <Bar
+                      dataKey="var10"
+                      fill="#990000"
+                      stackId="varStack"
+                      yAxisId="rightAxis"
+                      name="VaR 10%"
+                    />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            </div>
           </div>
         </div>
       </div>
 
-      {/* -------------------------------------------------- */}
-      {/* F) Additional Table: Forward Rate + VaR + Convert  */}
-      {/* -------------------------------------------------- */}
-      <div className="col-xl-12">
-        <div className="card mt-4">
-          <div className="card-body">
-            <h5 className="card-title">Forward Rate and Value at Risk</h5>
-            <div className="table-responsive" style={{ overflowX: "scroll" }}>
-              <table className="table table-bordered">
-                <thead>
-                  <tr>
-                    <th>Value Date</th>
-                    <th>Number of days</th>
-                    <th>FWD Rate</th>
-                    <th>Value at Risk 1%</th>
-                    <th>Value at Risk 5%</th>
-                    <th>Value at Risk 10%</th>
-                    <th>Action</th> {/* NEW: Convert button column */}
-                  </tr>
-                </thead>
-                <tbody>
-                  {forwardData.map((item, idx) => {
-                    const dateVal = item["Value Date"];
-                    const days = item.Days || 0;
-                    const fwdRate = item["Forward Rate"];
-                    const openPosId = item["open_position_id"]; // from backend
+      {/* (D) Forward Rate + VaR + Convert Table */}
+      <div className="row mb-5">
+        <div className="col-12">
+          <div className="card shadow-sm">
+            <div className="card-body">
+              <h5 className="card-title mb-3" style={{ fontWeight: 500 }}>
+                Forward Rate & VaR
+              </h5>
+              <div className="table-responsive" style={{ overflowX: "scroll" }}>
+                <table className="table table-bordered">
+                  <thead>
+                    <tr>
+                      <th>Value Date</th>
+                      <th>Number of days</th>
+                      <th>FWD Rate</th>
+                      <th>Value at Risk 1%</th>
+                      <th>Value at Risk 5%</th>
+                      <th>Value at Risk 10%</th>
+                      <th>Action</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {forwardData.map((item, idx) => {
+                      const dateVal = item["Value Date"];
+                      const days = item.Days || 0;
+                      const fwdRate = item["Forward Rate"];
+                      const openPosId = item["open_position_id"];
 
-                    // For VaR, see if there's a matching var record
-                    const varItem = varData.find(
-                      (v) => v["Value Date"] === dateVal
-                    );
+                      // match VaR item
+                      const varItem = varData.find(
+                        (v) => v["Value Date"] === dateVal
+                      );
 
-                    return (
-                      <tr key={idx}>
-                        <td>{dateVal}</td>
-                        <td>{days}</td>
-                        <td>
-                          {fwdRate !== undefined
-                            ? Number(fwdRate).toFixed(4)
-                            : "N/A"}
-                        </td>
-                        <td>
-                          {varItem?.["VaR 1%"] !== undefined
-                            ? varItem["VaR 1%"].toFixed(2)
-                            : "N/A"}
-                        </td>
-                        <td>
-                          {varItem?.["VaR 5%"] !== undefined
-                            ? varItem["VaR 5%"].toFixed(2)
-                            : "N/A"}
-                        </td>
-                        <td>
-                          {varItem?.["VaR 10%"] !== undefined
-                            ? varItem["VaR 10%"].toFixed(2)
-                            : "N/A"}
-                        </td>
-                        <td>
-                          {openPosId ? (
-                            <button
-                              className="btn btn-sm btn-success"
-                              onClick={() => handleConvert(openPosId)}
-                            >
-                              Convert
-                            </button>
-                          ) : (
-                            "N/A"
-                          )}
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
+                      return (
+                        <tr key={idx}>
+                          <td>{dateVal}</td>
+                          <td>{days}</td>
+                          <td>
+                            {fwdRate !== undefined
+                              ? Number(fwdRate).toFixed(4)
+                              : "N/A"}
+                          </td>
+                          <td>
+                            {varItem?.["VaR 1%"] !== undefined
+                              ? varItem["VaR 1%"].toFixed(2)
+                              : "N/A"}
+                          </td>
+                          <td>
+                            {varItem?.["VaR 5%"] !== undefined
+                              ? varItem["VaR 5%"].toFixed(2)
+                              : "N/A"}
+                          </td>
+                          <td>
+                            {varItem?.["VaR 10%"] !== undefined
+                              ? varItem["VaR 10%"].toFixed(2)
+                              : "N/A"}
+                          </td>
+                          <td>
+                            {openPosId ? (
+                              <button
+                                className="btn btn-sm btn-success"
+                                onClick={() => handleConvert(openPosId)}
+                              >
+                                Convert
+                              </button>
+                            ) : (
+                              "N/A"
+                            )}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
             </div>
           </div>
         </div>

@@ -135,3 +135,60 @@ export const updateOrderClient = (orderId, updatedData) => {
 };
 
 
+// Fetch premium rates (admin only)
+export const fetchPremiumRates = () => {
+    const token = localStorage.getItem('accessToken');
+    if (!token) {
+        throw new Error('Token not available');
+    }
+
+    return axios.get(`${API_URL}/admin/api/premium-rate`, {
+        headers: {
+            Authorization: `Bearer ${token}`,
+        },
+    });
+};
+
+// Create premium rate (admin only)
+export const createPremiumRate = (rateData) => {
+    const token = localStorage.getItem('accessToken');
+    if (!token) {
+        throw new Error('Token not available');
+    }
+
+    return axios.post(`${API_URL}/admin/api/premium-rate`, rateData, {
+        headers: {
+            Authorization: `Bearer ${token}`,
+            'Content-Type': 'application/json',
+        },
+    });
+};
+
+// Update premium rate (admin only)
+export const updatePremiumRate = (rateId, rateData) => {
+    const token = localStorage.getItem('accessToken');
+    if (!token) {
+        throw new Error('Token not available');
+    }
+
+    return axios.put(`${API_URL}/admin/api/premium-rate/${rateId}`, rateData, {
+        headers: {
+            Authorization: `Bearer ${token}`,
+            'Content-Type': 'application/json',
+        },
+    });
+};
+
+// Delete premium rate (admin only)
+export const deletePremiumRate = (rateId) => {
+    const token = localStorage.getItem('accessToken');
+    if (!token) {
+        throw new Error('Token not available');
+    }
+
+    return axios.delete(`${API_URL}/admin/api/premium-rate/${rateId}`, {
+        headers: {
+            Authorization: `Bearer ${token}`,
+        },
+    });
+};

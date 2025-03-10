@@ -3,18 +3,19 @@ import axios from 'axios';
 import Swal from "sweetalert2";
 import { loginConfirmedAction, Logout } from '../store/actions/AuthActions';
 
-export function signUp(email, password, rating, options, clientName) {
+// AuthService.js
+export function signUp(email, password, options, rating, clientName)
+{
     const postData = {
-        email,
-        password,
-        rating,
-        options,
-        client_name: clientName, // Include client_name in the payload
-
+      email,
+      password,
+      options,
+      rating,
+      client_name: clientName,
     };
     return axios.post('http://localhost:5001/admin/signup', postData);
-}
-
+  }
+  
 // Login function to call backend /admin/signin route
 export function login(email, password) {
     const postData = {
