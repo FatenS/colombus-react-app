@@ -24,6 +24,8 @@
     "chart.js": "^4.4.6",
     "chartjs-adapter-date-fns": "^3.0.0",
     "formik": "^2.4.6",
+    "html2canvas": "^1.4.1",
+    "jspdf": "^3.0.0",
     "lightgallery": "^2.7.2",
     "p-min-delay": "^4.0.2",
     "react": "^18.2.0",

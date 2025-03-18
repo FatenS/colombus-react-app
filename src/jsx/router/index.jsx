@@ -137,8 +137,8 @@ const Markup = () => {
     //Trading
     // { url: "trading-market", component: <TradingMarket /> },
     // { url: "ico-listing", component: <IcoListing /> },
-    { url: "p2p", component: <P2P /> },
-    { url: "future", component: <FutureTrading /> },
+    { url: "simulation", component: <P2P /> },
+    { url: "order", component: <FutureTrading /> },
 
     //Cryoti
     { url: "market-watch", component: <MarketWatch /> },

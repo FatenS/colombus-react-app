@@ -12,6 +12,8 @@ import {
   Popover,
   Row,
   Col,
+  InputGroup,
+  FormControl,
 } from "react-bootstrap";
 import { useDispatch, useSelector } from "react-redux";
 import Swal from "sweetalert2";
@@ -55,6 +57,10 @@ const SubmitOrderForm = React.memo(
     setCurrency,
     tradeType,
     setTradeType,
+    optionType,      // NEW PROP for option type (CALL/PUT)
+    setOptionType,   // NEW PROP setter
+    strike,          // NEW PROP for strike (optional)
+    setStrike,       // NEW PROP setter
     onSubmit,
     onCancel,
   }) => {
@@ -117,7 +123,7 @@ const SubmitOrderForm = React.memo(
               />
             </div>
 
-            {/* Transaction Type */}
+            {/* Transaction Type (Buy/Sell) */}
             <div className="input-group mb-3">
               <Dropdown>
                 <Dropdown.Toggle>{transactionType}</Dropdown.Toggle>
@@ -171,6 +177,33 @@ const SubmitOrderForm = React.memo(
               />
             </div>
 
+            {/* Option-specific Fields */}
+            {tradeType === "option" && (
+              <>
+                <div className="input-group mb-3">
+                  <span className="input-group-text">Option Type</span>
+                  <select
+                    className="form-control"
+                    value={optionType}
+                    onChange={(e) => setOptionType(e.target.value)}
+                  >
+                    <option value="CALL">CALL</option>
+                    <option value="PUT">PUT</option>
+                  </select>
+                </div>
+                <div className="input-group mb-3">
+                  <span className="input-group-text">Strike (optional)</span>
+                  <input
+                    type="number"
+                    className="form-control"
+                    value={strike}
+                    onChange={(e) => setStrike(e.target.value)}
+                    placeholder="Leave empty for ATM"
+                  />
+                </div>
+              </>
+            )}
+
             {/* Action Buttons */}
             <div className="mt-3 d-flex justify-content-between">
               <button
@@ -221,6 +254,12 @@ const FutureTrading = () => {
   const initialClientTab = isAdmin ? "Order" : "MyOrders";
   const [activeTab, setActiveTab] = useState(initialClientTab);
 
+  // New filter states:
+  // For admin: search orders by client name.
+  const [adminClientSearch, setAdminClientSearch] = useState("");
+  // For clients: filter orders by trade category.
+  const [clientCategoryFilter, setClientCategoryFilter] = useState("All");
+
   // Admin edit modal state
   const [showEditModal, setShowEditModal] = useState(false);
   const [editingOrder, setEditingOrder] = useState(null);
@@ -239,6 +278,10 @@ const FutureTrading = () => {
   const [valueDate, setValueDate] = useState("");
   const [currency, setCurrency] = useState("USD");
   const [tradeType, setTradeType] = useState("spot");
+
+  // NEW state variables for Option orders
+  const [optionType, setOptionType] = useState("CALL");
+  const [strike, setStrike] = useState("");
 
   // Reset active page if orders length changes
   useEffect(() => {
@@ -308,7 +351,15 @@ const FutureTrading = () => {
       currency,
       bank_account: bankAccount,
       is_option: isOption,
+      trade_type: tradeType,  // NEW: include trade type (spot/forward/option)
     };
+    // NEW: If option, include optionType and (if provided) strike.
+    if (isOption) {
+      orderData.option_type = optionType;
+      if (strike) {
+        orderData.strike = parseFloat(strike);
+      }
+    }
     dispatch(submitOrderAction(orderData))
       .then(() => {
         Swal.fire({
@@ -316,7 +367,6 @@ const FutureTrading = () => {
           title: isOption ? "Option Submitted" : "Order Submitted",
         });
         resetForm();
-        // For clients, switch back to the "My Orders" tab after submit.
         if (!isAdmin) setActiveTab("MyOrders");
         dispatch(fetchOrdersAction(isAdmin));
       })
@@ -329,7 +379,7 @@ const FutureTrading = () => {
             "There was an issue submitting your order. Please see console for details.",
         });
       });
-  }, [amount, transactionType, bankAccount, valueDate, currency, tradeType, dispatch, isAdmin]);
+  }, [amount, transactionType, bankAccount, valueDate, currency, tradeType, optionType, strike, dispatch, isAdmin]);
 
   const handleUpdateOrder = useCallback(() => {
     if (!editingOrder) return;
@@ -341,7 +391,15 @@ const FutureTrading = () => {
       value_date: valueDate,
       currency,
       is_option: isOption,
+      trade_type: tradeType,  // NEW: include updated trade type
     };
+    // NEW: Include option data if applicable.
+    if (isOption) {
+      updatedOrderData.option_type = optionType;
+      if (strike) {
+        updatedOrderData.strike = parseFloat(strike);
+      }
+    }
     dispatch(updateOrderClientAction(editingOrder.id, updatedOrderData))
       .then(() => {
         Swal.fire({
@@ -360,7 +418,7 @@ const FutureTrading = () => {
           text: "There was an issue updating your order. Please try again.",
         });
       });
-  }, [editingOrder, amount, bankAccount, transactionType, valueDate, currency, tradeType, dispatch, isAdmin]);
+  }, [editingOrder, amount, bankAccount, transactionType, valueDate, currency, tradeType, optionType, strike, dispatch, isAdmin]);
 
   // --- Delete Order ---
   const handleDeleteOrder = (orderId) => {
@@ -392,8 +450,11 @@ const FutureTrading = () => {
     setCurrency(order.currency);
     setBankAccount(order.bank_account);
     setIsEditMode(true);
-    // In client view, switch to the New Trade tab when editing.
-    setTradeType(order.is_option ? "option" : "spot");
+    setTradeType(order.trade_type || (order.is_option ? "option" : "spot"));
+    if (order.is_option) {
+      setOptionType(order.option_type || "CALL");
+      setStrike(order.strike ? order.strike.toString() : "");
+    }
     if (!isAdmin) setActiveTab("NewTrade");
   };
 
@@ -405,6 +466,9 @@ const FutureTrading = () => {
     setValueDate("");
     setCurrency("USD");
     setTradeType("spot");
+    // NEW: Reset option fields
+    setOptionType("CALL");
+    setStrike("");
     setIsEditMode(false);
     setEditingOrder(null);
   };
@@ -501,6 +565,7 @@ const FutureTrading = () => {
     showRateAndBank,
     additionalAttributes = [],
   }) => {
+    // Paginate the (already filtered) orders array.
     const currentOrders = orders.slice(
       (activePage - 1) * itemsPerPage,
       activePage * itemsPerPage
@@ -515,11 +580,13 @@ const FutureTrading = () => {
                 <th>Transaction Type</th>
                 <th>Amount</th>
                 <th>Currency</th>
+                <th>Trade Type</th> {/* NEW: New column for trade type */}
                 <th>Status</th>
                 <th>Value Date</th>
                 {additionalAttributes.map((attr, i) => (
                   <th key={i}>{attr.label}</th>
                 ))}
+                <th>Moneyness</th>
                 <th>Premium</th>
                 {showRateAndBank && <th>Execution Rate</th>}
                 {showRateAndBank && <th>Bank Name</th>}
@@ -545,11 +612,13 @@ const FutureTrading = () => {
                   </td>
                   <td>{order.amount}</td>
                   <td>{order.currency}</td>
+                  <td>{order.trade_type ? order.trade_type.charAt(0).toUpperCase() + order.trade_type.slice(1) : "N/A"}</td>
                   <td>{order.status}</td>
                   <td>{order.value_date}</td>
                   {additionalAttributes.map((attr, j) => (
                     <td key={j}>{order[attr.key] || "N/A"}</td>
                   ))}
+                  <td>{order.is_option ? order.moneyness || "N/A" : "—"}</td>
                   <td>
                     {order.is_option && order.premium ? (
                       <OverlayTrigger
@@ -617,6 +686,26 @@ const FutureTrading = () => {
     );
   };
 
+  // --- Filtering for Admin and Clients ---
+  // For Admin Orders: filter by client name.
+  const filteredAdminOrders = isAdmin && activeTab === "Order"
+    ? orders.filter(
+        (order) =>
+          order.client_name &&
+          order.client_name.toLowerCase().includes(adminClientSearch.toLowerCase())
+      )
+    : orders;
+
+  // For Clients: filter by trade category.
+  const filteredClientOrders = !isAdmin && activeTab === "MyOrders"
+    ? orders.filter((order) =>
+        clientCategoryFilter === "All"
+          ? true
+          : order.trade_type &&
+            order.trade_type.toLowerCase() === clientCategoryFilter.toLowerCase()
+      )
+    : orders;
+
   // --- Rendering Layout ---
   return (
     <div className="container-fluid">
@@ -636,7 +725,7 @@ const FutureTrading = () => {
         )}
 
         {isAdmin ? (
-          // --- Admin View (Unchanged) ---
+          // --- Admin View (with client search filter) ---
           <div className="col-12">
             <div className="card shadow-sm">
               <Tab.Container activeKey={activeTab} onSelect={(key) => setActiveTab(key)}>
@@ -658,12 +747,26 @@ const FutureTrading = () => {
                   </Nav>
                 </div>
                 <div className="card-body pt-0">
+                  {/* Client search input for Admin */}
+                  {activeTab === "Order" && (
+                    <Row className="mb-3">
+                      <Col md={4}>
+                        <InputGroup>
+                          <FormControl
+                            placeholder="Search client by name"
+                            value={adminClientSearch}
+                            onChange={(e) => setAdminClientSearch(e.target.value)}
+                          />
+                        </InputGroup>
+                      </Col>
+                    </Row>
+                  )}
                   <Tab.Content>
                     <Tab.Pane eventKey="Order">
                       <div className="d-flex flex-wrap">
                         <div className="col-lg-8 col-md-12 col-12">
                           <OrderTable
-                            orders={orders}
+                            orders={filteredAdminOrders}
                             isAdmin={isAdmin}
                             onEditClick={handleEditOrderClick}
                             handleDeleteOrder={handleDeleteOrder}
@@ -685,6 +788,10 @@ const FutureTrading = () => {
                             setCurrency={setCurrency}
                             tradeType={tradeType}
                             setTradeType={setTradeType}
+                            optionType={optionType}           // NEW PROP
+                            setOptionType={setOptionType}     // NEW PROP
+                            strike={strike}                   // NEW PROP
+                            setStrike={setStrike}             // NEW PROP
                             onSubmit={isEditMode ? handleUpdateOrder : handleSubmitOrder}
                             onCancel={() => {
                               resetForm();
@@ -729,7 +836,7 @@ const FutureTrading = () => {
             </div>
           </div>
         ) : (
-          // --- Client View: Two Tabs – "My Orders" and "New Trade" ---
+          // --- Client View: Two Tabs – "My Orders" and "New Trade" with trade category filter ---
           <div className="col-12">
             <Tab.Container activeKey={activeTab} onSelect={(key) => setActiveTab(key)}>
               <div className="card shadow-sm mb-3">
@@ -739,15 +846,30 @@ const FutureTrading = () => {
                       <Nav.Link eventKey="MyOrders">My Orders</Nav.Link>
                     </Nav.Item>
                     <Nav.Item>
-                      <Nav.Link eventKey="NewTrade">New Trade</Nav.Link>
+                      <Nav.Link eventKey="NewTrade">Submit your Order</Nav.Link>
                     </Nav.Item>
                   </Nav>
                 </div>
                 <div className="card-body pt-0">
+                  {activeTab === "MyOrders" && (
+                    <Row className="mb-3">
+                      <Col md={4}>
+                        <Form.Select
+                          value={clientCategoryFilter}
+                          onChange={(e) => setClientCategoryFilter(e.target.value)}
+                        >
+                          <option value="All">All Categories</option>
+                          <option value="spot">Spot</option>
+                          <option value="forward">Forward</option>
+                          <option value="option">Option</option>
+                        </Form.Select>
+                      </Col>
+                    </Row>
+                  )}
                   <Tab.Content>
                     <Tab.Pane eventKey="MyOrders">
                       <OrderTable
-                        orders={orders}
+                        orders={filteredClientOrders}
                         isAdmin={isAdmin}
                         onEditClick={handleEditOrderClick}
                         handleDeleteOrder={handleDeleteOrder}
@@ -769,6 +891,10 @@ const FutureTrading = () => {
                         setCurrency={setCurrency}
                         tradeType={tradeType}
                         setTradeType={setTradeType}
+                        optionType={optionType}           // NEW PROP
+                        setOptionType={setOptionType}     // NEW PROP
+                        strike={strike}                   // NEW PROP
+                        setStrike={setStrike}             // NEW PROP
                         onSubmit={isEditMode ? handleUpdateOrder : handleSubmitOrder}
                         onCancel={() => {
                           resetForm();

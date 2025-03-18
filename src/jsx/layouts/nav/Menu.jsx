@@ -43,11 +43,11 @@ export const MenuList = [
       // },
       {
         title: "Simulation",
-        to: "p2p",
+        to: "simulation",
       },
       {
         title: "Order",
-        to: "future",
+        to: "order",
       },
     ],
   },
@@ -116,24 +116,24 @@ export const MenuList = [
       //   title: "Post Details",
       //   to: "post-details",
       // },
-      // {
-      //   title: "Email",
-      //   hasMenu: true,
-      //   content: [
-      //     {
-      //       title: "Compose",
-      //       to: "email-compose",
-      //     },
-      //     {
-      //       title: "Inbox",
-      //       to: "email-inbox",
-      //     },
-      //     {
-      //       title: "Read",
-      //       to: "email-read",
-      //     },
-      //   ],
-      // },
+      {
+        title: "Email",
+        hasMenu: true,
+        content: [
+          {
+            title: "Compose",
+            to: "email-compose",
+          },
+          {
+            title: "Inbox",
+            to: "email-inbox",
+          },
+          {
+            title: "Read",
+            to: "email-read",
+          },
+        ],
+      },
       // {
       //   title: "Calendar",
       //   to: "app-calender",

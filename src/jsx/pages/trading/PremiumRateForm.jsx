@@ -6,6 +6,10 @@ const PremiumRateForm = ({ premiumRates, onCreate, onUpdate, onDelete }) => {
   const [currency, setCurrency] = useState("");
   const [maturityDays, setMaturityDays] = useState("");
   const [premiumPercentage, setPremiumPercentage] = useState("");
+  // NEW: Option type state with default value "CALL"
+  const [optionType, setOptionType] = useState("CALL");
+  // NEW: Transaction type state with default value "buy"
+  const [transactionType, setTransactionType] = useState("buy");
   const [editingRate, setEditingRate] = useState(null);
 
   const handleSubmit = (e) => {
@@ -15,6 +19,9 @@ const PremiumRateForm = ({ premiumRates, onCreate, onUpdate, onDelete }) => {
       currency,
       maturity_days: parseInt(maturityDays),
       premium_percentage: parseFloat(premiumPercentage),
+      // NEW: Include option_type and transaction_type in the payload
+      option_type: optionType,
+      transaction_type: transactionType,
     };
 
     if (editingRate) {
@@ -60,6 +67,9 @@ const PremiumRateForm = ({ premiumRates, onCreate, onUpdate, onDelete }) => {
     setCurrency(rate.currency);
     setMaturityDays(rate.maturity_days);
     setPremiumPercentage(rate.premium_percentage);
+    // NEW: Set the option type and transaction type when editing
+    setOptionType(rate.option_type || "CALL");
+    setTransactionType(rate.transaction_type || "buy");
   };
 
   const handleDelete = (rateId) => {
@@ -86,6 +96,8 @@ const PremiumRateForm = ({ premiumRates, onCreate, onUpdate, onDelete }) => {
     setCurrency("");
     setMaturityDays("");
     setPremiumPercentage("");
+    setOptionType("CALL"); // Reset option type to default
+    setTransactionType("buy"); // NEW: Reset transaction type to default
     setEditingRate(null);
   };
 
@@ -120,6 +132,32 @@ const PremiumRateForm = ({ premiumRates, onCreate, onUpdate, onDelete }) => {
             required
           />
         </Form.Group>
+        {/* NEW: Option Type Field */}
+        <Form.Group className="mb-3">
+          <Form.Label>Option Type</Form.Label>
+          <Form.Control
+            as="select"
+            value={optionType}
+            onChange={(e) => setOptionType(e.target.value)}
+            required
+          >
+            <option value="CALL">CALL</option>
+            <option value="PUT">PUT</option>
+          </Form.Control>
+        </Form.Group>
+        {/* NEW: Transaction Type Field */}
+        <Form.Group className="mb-3">
+          <Form.Label>Transaction Type</Form.Label>
+          <Form.Control
+            as="select"
+            value={transactionType}
+            onChange={(e) => setTransactionType(e.target.value)}
+            required
+          >
+            <option value="buy">Buy</option>
+            <option value="sell">Sell</option>
+          </Form.Control>
+        </Form.Group>
         <Button type="submit" variant="primary">
           {editingRate ? "Update Rate" : "Create Rate"}
         </Button>
@@ -136,6 +174,9 @@ const PremiumRateForm = ({ premiumRates, onCreate, onUpdate, onDelete }) => {
             <th>Currency</th>
             <th>Maturity Days</th>
             <th>Premium Percentage</th>
+            <th>Option Type</th>
+            {/* NEW: Transaction Type Column */}
+            <th>Transaction Type</th>
             <th>Actions</th>
           </tr>
         </thead>
@@ -145,6 +186,9 @@ const PremiumRateForm = ({ premiumRates, onCreate, onUpdate, onDelete }) => {
               <td>{rate.currency}</td>
               <td>{rate.maturity_days}</td>
               <td>{rate.premium_percentage}</td>
+              <td>{rate.option_type}</td>
+              {/* NEW: Display transaction type */}
+              <td>{rate.transaction_type}</td>
               <td>
                 <Button
                   variant="warning"
