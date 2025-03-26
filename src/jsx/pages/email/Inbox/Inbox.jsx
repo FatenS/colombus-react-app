@@ -1,981 +1,167 @@
-import React, { Fragment, useState, useRef, useEffect } from "react";
+import React, { useEffect, useState, Fragment } from "react";
 import { Link } from "react-router-dom";
-import { Dropdown } from "react-bootstrap";
-import PageTitle from "../../../layouts/PageTitle";
-
+import { 
+  Container, 
+  Row, 
+  Col, 
+  Card, 
+  ListGroup, 
+  Button, 
+  Dropdown 
+} from "react-bootstrap";
 
 const Inbox = () => {
-  const [openMailBar, setOpenMailBar] = useState();
-  const [data, setData] = useState(
-    document.querySelectorAll(".email-right-box .email-list .message")
-  );
-  const sort = 10;
-  const activePag = useRef(0);
-  const [test, settest] = useState(0);
+  // Default to a valid email type ("confirmation" or "interbank")
+  const [emails, setEmails] = useState([]);
+  const [selectedEmail, setSelectedEmail] = useState(null);
+  const [activeTab, setActiveTab] = useState("confirmation");
 
-  // Active data
-  const chageData = (frist, sec) => {
-    for (var i = 0; i < data.length; ++i) {
-      if (i >= frist && i < sec) {
-        data[i].classList.remove("d-none");
-      } else {
-        data[i].classList.add("d-none");
-      }
-    }
-  };
-  // use effect
   useEffect(() => {
-    setData(document.querySelectorAll(".email-right-box .email-list .message"));
-    chackboxFun();
-  }, [test]);
-  // Active pagginarion
-  activePag.current === 0 && chageData(0, sort);
-  // paggination
-  let paggination = Array(Math.ceil(data.length / sort))
-    .fill()
-    .map((_, i) => i + 1);
+    fetchEmails();
+  }, [activeTab]);
 
-  // Active paggination & chage data
-  const onClick = (i) => {
-    activePag.current = i;
-    chageData(activePag.current * sort, (activePag.current + 1) * sort);
-    settest(i);
-  };
-  const chackbox = document.querySelectorAll(".message input");
-  const motherChackBox = document.querySelector("#checkbox1");
-  
-  const chackboxFun = (type) => {
-    for (let i = 0; i < chackbox.length; i++) {
-      const element = chackbox[i];
-      if (type === "all") {
-        if (motherChackBox.checked) {
-          element.checked = true;
-        } else {
-          element.checked = false;
+  const fetchEmails = async () => {
+    const token = localStorage.getItem("accessToken");
+    if (!token) {
+      console.error("No token found. Please login.");
+      return;
+    }
+    try {
+      // Use the full URL with /admin prefix and valid email type in the query
+      const response = await fetch(
+        `http://localhost:5001/admin/api/internal-emails?type=${activeTab}`,
+        {
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${token}`
+          }
         }
+      );
+      const data = await response.json();
+      if (Array.isArray(data)) {
+        setEmails(data);
       } else {
-        if (!element.checked) {
-          motherChackBox.checked = false;
-          break;
-        } else {
-          motherChackBox.checked = true;
-        }
+        console.error("Expected an array but got:", data);
+        setEmails([]);
       }
+    } catch (error) {
+      console.error("Error fetching emails:", error);
     }
   };
+
   return (
     <Fragment>
-       <div className="row">
-        <div className="col-lg-12">
-          <div className="card">
-            <div className="card-body">
-              <div className="row">
-                <div className={`col-xl-3 col-xxl-4 email-left-body ${openMailBar ? "active" : " "}`}>
-                  <div className="mb-3 mt-4 mt-sm-0 email-left-box">
-                    <div className="p-0">
-                      <Link
-                        to="/email-compose"
-                        className="btn btn-primary btn-block"
-                      >
+      <Container className="my-4">
+        <Row>
+          <Col>
+            <Card className="shadow-sm">
+              <Card.Body>
+                <Row>
+                  {/* Sidebar */}
+                  <Col md={4} className="border-end">
+                    <div className="mb-4 text-center">
+                      <Link to="/email-compose" className="btn btn-primary">
                         Compose
                       </Link>
                     </div>
-                    <div className="mail-list mt-4 rounded">
-                      <Link to="/email-inbox" className="list-group-item active">
-                        <i className="fa fa-inbox font-18 align-middle me-2"></i>
-                        Inbox
-                        <span className="badge badge-danger  badge-sm float-end">
-                          198
+                    <ListGroup variant="flush">
+                      <ListGroup.Item 
+                        action 
+                        active={activeTab === "confirmation"} 
+                        onClick={() => setActiveTab("confirmation")}
+                      >
+                        <i className="fa fa-inbox me-2"></i>
+                        Confirmation
+                        <span className="badge bg-danger float-end">
+                          {activeTab === "confirmation" ? emails.length : "-"}
                         </span>
-                      </Link>
-                      <Link to="/email-inbox" className="list-group-item">
-                        <i className="fa fa-paper-plane font-18 align-middle me-2"></i>
-                        Sent
-                      </Link>
-                      <Link to="/email-inbox" className="list-group-item">
-                        <i className="fas fa-star font-18 align-middle me-2"></i>
-                        Important
-                        <span className="badge badge-danger text-white badge-sm float-end">
-                          47
+                      </ListGroup.Item>
+                      <ListGroup.Item 
+                        action 
+                        active={activeTab === "interbank"} 
+                        onClick={() => setActiveTab("interbank")}
+                      >
+                        <i className="fa fa-bank me-2"></i>
+                        Interbank
+                        <span className="badge bg-info float-end">
+                          {activeTab === "interbank" ? emails.length : "-"}
                         </span>
-                      </Link>
-                      <Link to="/email-inbox" className="list-group-item">
-                        <i className="mdi mdi-file-document-box font-18 align-middle me-2"></i>
-                        Draft
-                      </Link>
-                      <Link to="/email-inbox" className="list-group-item">
-                        <i className="fa fa-trash font-18 align-middle me-2"></i>
-                        Trash
-                      </Link>
-                    </div>
-                    <div className="mail-list mt-4 rounded overflow-hidden">
-                      <div className="intro-title d-flex justify-content-between my-0">
-                        <h5>Categories</h5>                        
-                      </div>
-                      <Link to="/email-inbox" className="list-group-item">
-                        <span className="icon-warning">
-                          <i className="fa fa-circle" />
-                        </span>
-                        Work
-                      </Link>
-                      <Link to="/email-inbox" className="list-group-item">
-                        <span className="icon-primary">
-                          <i className="fa fa-circle" />
-                        </span>
-                        Private
-                      </Link>
-                      <Link to="/email-inbox" className="list-group-item">
-                        <span className="icon-success">
-                          <i className="fa fa-circle" aria-hidden="true"></i>
-                        </span>
-                        Support
-                      </Link>
-                      <Link to="/email-inbox" className="list-group-item">
-                        <span className="icon-dpink">
-                          <i className="fa fa-circle" aria-hidden="true"></i>
-                        </span>
-                        Social
-                      </Link>
-                    </div>
-                  </div>
-                </div>
-                  <div className="col-xl-9 col-xxl-8">
-                    <div className="email-right-box">
-                      <div role="toolbar" className="toolbar d-sm-flex d-block align-items-center">
-                        <div className="btn-group mb-1 ">
-                          <div className="form-check custom-checkbox ">
-                            <input
-                              type="checkbox"
-                              className="form-check-input"
-                              id="checkbox1"
-                              onClick={() => chackboxFun("all")}
-                            />
-                            <label
-                              className="form-check-label"
-                              htmlFor="checkbox1"
-                            ></label>
-                          </div>
-                        </div>
-                        <div className="btn-group mb-1">
-                          <button
-                            className="btn btn-primary light px-3"
-                            type="button"
-                          >
-                            <i className="ti-reload"></i>
-                          </button>
-                        </div>
-                        <Dropdown className="btn-group mb-1 mx-2">
-                          <Dropdown.Toggle
-                            aria-expanded="false"
-                            data-toggle="dropdown"
-                            className="btn btn-primary px-3 light dropdown-toggle ms-1"
-                            type="button"
-                          >
-                            More <span className="caret"></span>
-                          </Dropdown.Toggle>
-                          <Dropdown.Menu className="dropdown-menu">
-                            <Dropdown.Item
-                              to="/email-inbox"
-                              className="dropdown-item"
-                            >
-                              Mark as Unread
-                            </Dropdown.Item>
-                            <Dropdown.Item
-                              to="/email-inbox"
-                              className="dropdown-item"
-                            >
-                              Add to Tasks
-                            </Dropdown.Item>
-                            <Dropdown.Item
-                              to="/email-inbox"
-                              className="dropdown-item"
-                            >
-                              Add Star
-                            </Dropdown.Item>
-                            <Dropdown.Item
-                              to="/email-inbox"
-                              className="dropdown-item"
-                            >
-                              Mute
-                            </Dropdown.Item>
-                          </Dropdown.Menu>
-                        </Dropdown>
-                        <div className={`email-tools-box float-sm-unset float-end ${openMailBar ? "active" : " "}`} onClick={()=>setOpenMailBar(!openMailBar)}>
-                          <i className="fa-solid fa-list-ul"/>
-                        </div>
-                        <form className="form-head style-1 d-none d-sm-block ms-auto mt-sm-0 mt-3">
-													<div className="input-group search-area ms-auto w-100 d-inline-flex">
-														<input type="text" className="form-control" placeholder="Search here" />
-														<span className="input-group-text pe-3">
-															<button className="bg-transparent border-0">
-                                <i className="flaticon-381-search-2" />
-															</button>
-														</span>
-													</div>
-												</form>
-                      </div>
-                      {/** Single Message */}
-                      <div className="email-list mt-3">
-                        <div className="message">
-                          <div>
-                            <div className="d-flex message-single">
-                              <div className="pl-1 align-self-center">
-                                <div className="form-check custom-checkbox">
-                                  <input
-                                    type="checkbox"
-                                    className="form-check-input"
-                                    onClick={() => chackboxFun()}
-                                    id="checkbox2"
-                                  />
-                                  <label
-                                    className="form-check-label"
-                                    htmlFor="checkbox2"
-                                  />
-                                </div>
-                              </div>
-                              <div className="ms-2">
-                                <button className="border-0 bg-transparent align-middle p-0">
-                                  <i className="fa fa-star" 
-                                    onClick={(e)=>e.target.classList.toggle('yellow')}
-                                  />
-                                </button>
-                              </div>
-                            </div>
-                            <Link to="/email-read" className="col-mail col-mail-2">
-                              <div className="subject">
-                                Ingredia Nutrisha, A collection of textile samples lay
-                                spread out on the table - Samsa was a travelling
-                                salesman - and above it there hung a picture
-                              </div>
-                              <div className="date">11:49 am</div>
-                            </Link>
-                          </div>
-                        </div>
-                        <div className="message">
-                          <div>
-                            <div className="d-flex message-single">
-                              <div className="pl-1 align-self-center">
-                                <div className="form-check custom-checkbox">
-                                  <input
-                                    type="checkbox"
-                                    className="form-check-input"
-                                    onClick={() => chackboxFun()}
-                                    id="checkbox3"
-                                  />
-                                  <label
-                                    className="form-check-label"
-                                    htmlFor="checkbox3"
-                                  />
-                                </div>
-                              </div>
-                              <div className="ms-2">
-                                <button className="border-0 bg-transparent align-middle p-0">
-                                  <i className="fa fa-star" 
-                                    onClick={(e)=>e.target.classList.toggle('yellow')}
-                                  />
-                                </button>
-                              </div>
-                            </div>
-                            <Link to="/email-read" className="col-mail col-mail-2">
-                              <div className="subject">
-                                Almost unorthographic life One day however a small
-                                line of blind text by the name of Lorem Ipsum decided
-                                to leave for the far World of Grammar.
-                              </div>
-                              <div className="date">11:49 am</div>
-                            </Link>
-                          </div>
-                        </div>
-                        <div className="message">
-                          <div>
-                            <div className="d-flex message-single">
-                              <div className="pl-1 align-self-center">
-                                <div className="form-check custom-checkbox">
-                                  <input
-                                    type="checkbox"
-                                    className="form-check-input"
-                                    onClick={() => chackboxFun()}
-                                    id="checkbox4"
-                                  />
-                                  <label
-                                    className="form-check-label"
-                                    htmlFor="checkbox4"
-                                  />
-                                </div>
-                              </div>
-                              <div className="ms-2">
-                                <button className="border-0 bg-transparent align-middle p-0">
-                                  <i className="fa fa-star" 
-                                    onClick={(e)=>e.target.classList.toggle('yellow')}
-                                  />
-                                </button>
-                              </div>
-                            </div>
-                            <Link to="/email-read" className="col-mail col-mail-2">
-                              <div className="subject">
-                                Pointing has no control about the blind texts it is an
-                                almost unorthographic life One day however a small
-                                line of blind text by the name of
-                              </div>
-                              <div className="date">11:49 am</div>
-                            </Link>
-                          </div>
-                        </div>
-                        <div className="message">
-                          <div>
-                            <div className="d-flex message-single">
-                              <div className="pl-1 align-self-center">
-                                <div className="form-check custom-checkbox">
-                                  <input
-                                    type="checkbox"
-                                    className="form-check-input"
-                                    onClick={() => chackboxFun()}
-                                    id="checkbox5"
-                                  />
-                                  <label
-                                    className="form-check-label"
-                                    htmlFor="checkbox5"
-                                  />
-                                </div>
-                              </div>
-                              <div className="ms-2">
-                                <button className="border-0 bg-transparent align-middle p-0">
-                                  <i className="fa fa-star" 
-                                    onClick={(e)=>e.target.classList.toggle('yellow')}
-                                  />
-                                </button>
-                              </div>
-                            </div>
-                            <Link to="/email-read" className="col-mail col-mail-2">
-                              <div className="subject">
-                                Even the all-powerful Pointing has no control about
-                                the blind texts it is an almost unorthographic life
-                                One day however a small line of blind text by the name
-                                of
-                              </div>
-                              <div className="date">11:49 am</div>
-                            </Link>
-                          </div>
-                        </div>
-                        <div className="message">
-                          <div>
-                            <div className="d-flex message-single">
-                              <div className="pl-1 align-self-center">
-                                <div className="form-check custom-checkbox">
-                                  <input
-                                    type="checkbox"
-                                    className="form-check-input"
-                                    onClick={() => chackboxFun()}
-                                    id="checkbox6"
-                                  />
-                                  <label
-                                    className="form-check-label"
-                                    htmlFor="checkbox6"
-                                  />
-                                </div>
-                              </div>
-                              <div className="ms-2">
-                                <button className="border-0 bg-transparent align-middle p-0">
-                                  <i className="fa fa-star" 
-                                    onClick={(e)=>e.target.classList.toggle('yellow')}
-                                  />
-                                </button>
-                              </div>
-                            </div>
-                            <Link to="/email-read" className="col-mail col-mail-2">
-                              <div className="subject">
-                                Ingredia Nutrisha, A collection of textile samples lay
-                                spread out on the table - Samsa was a travelling
-                                salesman - and above it there hung a picture
-                              </div>
-                              <div className="date">11:49 am</div>
-                            </Link>
-                          </div>
-                        </div>
-                        <div className="message">
-                          <div>
-                            <div className="d-flex message-single">
-                              <div className="pl-1 align-self-center">
-                                <div className="form-check custom-checkbox">
-                                  <input
-                                    type="checkbox"
-                                    className="form-check-input"
-                                    onClick={() => chackboxFun()}
-                                    id="checkbox7"
-                                  />
-                                  <label
-                                    className="form-check-label"
-                                    htmlFor="checkbox7"
-                                  />
-                                </div>
-                              </div>
-                              <div className="ms-2">
-                                <button className="border-0 bg-transparent align-middle p-0">
-                                  <i className="fa fa-star" 
-                                    onClick={(e)=>e.target.classList.toggle('yellow')}
-                                  />
-                                </button>
-                              </div>
-                            </div>
-                            <Link to="/email-read" className="col-mail col-mail-2">
-                              <div className="subject">
-                                Almost unorthographic life One day however a small
-                                line of blind text by the name of Lorem Ipsum decided
-                                to leave for the far World of Grammar.
-                              </div>
-                              <div className="date">11:49 am</div>
-                            </Link>
-                          </div>
-                        </div>
-                        <div className="message">
-                          <div>
-                            <div className="d-flex message-single">
-                              <div className="pl-1 align-self-center">
-                                <div className="form-check custom-checkbox">
-                                  <input
-                                    type="checkbox"
-                                    className="form-check-input"
-                                    onClick={() => chackboxFun()}
-                                    id="checkbox8"
-                                  />
-                                  <label
-                                    className="form-check-label"
-                                    htmlFor="checkbox8"
-                                  />
-                                </div>
-                              </div>
-                              <div className="ms-2">
-                                <button className="border-0 bg-transparent align-middle p-0">
-                                  <i className="fa fa-star" 
-                                    onClick={(e)=>e.target.classList.toggle('yellow')}
-                                  />
-                                </button>
-                              </div>
-                            </div>
-                            <Link to="/email-read" className="col-mail col-mail-2">
-                              <div className="subject">
-                                Pointing has no control about the blind texts it is an
-                                almost unorthographic life One day however a small
-                                line of blind text by the name of
-                              </div>
-                              <div className="date">11:49 am</div>
-                            </Link>
-                          </div>
-                        </div>
-                        <div className="message unread">
-                          <div>
-                            <div className="d-flex message-single">
-                              <div className="pl-1 align-self-center">
-                                <div className="form-check custom-checkbox">
-                                  <input
-                                    type="checkbox"
-                                    className="form-check-input"
-                                    onClick={() => chackboxFun()}
-                                    id="checkbox9"
-                                  />
-                                  <label
-                                    className="form-check-label"
-                                    htmlFor="checkbox9"
-                                  />
-                                </div>
-                              </div>
-                              <div className="ms-2">
-                                <button className="border-0 bg-transparent align-middle p-0">
-                                  <i className="fa fa-star" 
-                                    onClick={(e)=>e.target.classList.toggle('yellow')}
-                                  />
-                                </button>
-                              </div>
-                            </div>
-                            <Link to="/email-read" className="col-mail col-mail-2">
-                              <div className="subject">
-                                Even the all-powerful Pointing has no control about
-                                the blind texts it is an almost unorthographic life
-                                One day however a small line of blind text by the name
-                                of
-                              </div>
-                              <div className="date">11:49 am</div>
-                            </Link>
-                          </div>
-                        </div>
-                        <div className="message unread">
-                          <div>
-                            <div className="d-flex message-single">
-                              <div className="pl-1 align-self-center">
-                                <div className="form-check custom-checkbox">
-                                  <input
-                                    type="checkbox"
-                                    className="form-check-input"
-                                    onClick={() => chackboxFun()}
-                                    id="checkbox10"
-                                  />
-                                  <label
-                                    className="form-check-label"
-                                    htmlFor="checkbox10"
-                                  />
-                                </div>
-                              </div>
-                              <div className="ms-2">
-                                <button className="border-0 bg-transparent align-middle p-0">
-                                  <i className="fa fa-star" 
-                                    onClick={(e)=>e.target.classList.toggle('yellow')}
-                                  />
-                                </button>
-                              </div>
-                            </div>
-                            <Link to="/email-read" className="col-mail col-mail-2">
-                              <div className="subject">
-                                Ingredia Nutrisha, A collection of textile samples lay
-                                spread out on the table - Samsa was a travelling
-                                salesman - and above it there hung a picture
-                              </div>
-                              <div className="date">11:49 am</div>
-                            </Link>
-                          </div>
-                        </div>
-                        <div className="message">
-                          <div>
-                            <div className="d-flex message-single">
-                              <div className="pl-1 align-self-center">
-                                <div className="form-check custom-checkbox">
-                                  <input
-                                    type="checkbox"
-                                    className="form-check-input"
-                                    onClick={() => chackboxFun()}
-                                    id="checkbox11"
-                                  />
-                                  <label
-                                    className="form-check-label"
-                                    htmlFor="checkbox11"
-                                  />
-                                </div>
-                              </div>
-                              <div className="ms-2">
-                                <button className="border-0 bg-transparent align-middle p-0">
-                                  <i className="fa fa-star" 
-                                    onClick={(e)=>e.target.classList.toggle('yellow')}
-                                  />
-                                </button>
-                              </div>
-                            </div>
-                            <Link to="/email-read" className="col-mail col-mail-2">
-                              <div className="subject">
-                                Almost unorthographic life One day however a small
-                                line of blind text by the name of Lorem Ipsum decided
-                                to leave for the far World of Grammar.
-                              </div>
-                              <div className="date">11:49 am</div>
-                            </Link>
-                          </div>
-                        </div>
-                        <div className="message">
-                          <div>
-                            <div className="d-flex message-single">
-                              <div className="pl-1 align-self-center">
-                                <div className="form-check custom-checkbox">
-                                  <input
-                                    type="checkbox"
-                                    className="form-check-input"
-                                    onClick={() => chackboxFun()}
-                                    id="checkbox12"
-                                  />
-                                  <label
-                                    className="form-check-label"
-                                    htmlFor="checkbox12"
-                                  />
-                                </div>
-                              </div>
-                              <div className="ms-2">
-                                <button className="border-0 bg-transparent align-middle p-0">
-                                  <i className="fa fa-star" 
-                                    onClick={(e)=>e.target.classList.toggle('yellow')}
-                                  />
-                                </button>
-                              </div>
-                            </div>
-                            <Link to="/email-read" className="col-mail col-mail-2">
-                              <div className="subject">
-                                Pointing has no control about the blind texts it is an
-                                almost unorthographic life One day however a small
-                                line of blind text by the name of
-                              </div>
-                              <div className="date">11:49 am</div>
-                            </Link>
-                          </div>
-                        </div>
-                        <div className="message">
-                          <div>
-                            <div className="d-flex message-single">
-                              <div className="pl-1 align-self-center">
-                                <div className="form-check custom-checkbox">
-                                  <input
-                                    type="checkbox"
-                                    className="form-check-input"
-                                    onClick={() => chackboxFun()}
-                                    id="checkbox13"
-                                  />
-                                  <label
-                                    className="form-check-label"
-                                    htmlFor="checkbox13"
-                                  />
-                                </div>
-                              </div>
-                              <div className="ms-2">
-                                <button className="border-0 bg-transparent align-middle p-0">
-                                  <i className="fa fa-star" 
-                                    onClick={(e)=>e.target.classList.toggle('yellow')}
-                                  />
-                                </button>
-                              </div>
-                            </div>
-                            <Link to="/email-read" className="col-mail col-mail-2">
-                              <div className="subject">
-                                Even the all-powerful Pointing has no control about
-                                the blind texts it is an almost unorthographic life
-                                One day however a small line of blind text by the name
-                                of
-                              </div>
-                              <div className="date">11:49 am</div>
-                            </Link>
-                          </div>
-                        </div>
-                        <div className="message">
-                          <div>
-                            <div className="d-flex message-single">
-                              <div className="pl-1 align-self-center">
-                                <div className="form-check custom-checkbox">
-                                  <input
-                                    type="checkbox"
-                                    className="form-check-input"
-                                    onClick={() => chackboxFun()}
-                                    id="checkbox14"
-                                  />
-                                  <label
-                                    className="form-check-label"
-                                    htmlFor="checkbox14"
-                                  />
-                                </div>
-                              </div>
-                              <div className="ms-2">
-                                <button className="border-0 bg-transparent align-middle p-0">
-                                  <i className="fa fa-star" 
-                                    onClick={(e)=>e.target.classList.toggle('yellow')}
-                                  />
-                                </button>
-                              </div>
-                            </div>
-                            <Link to="/email-read" className="col-mail col-mail-2">
-                              <div className="subject">
-                                Ingredia Nutrisha, A collection of textile samples lay
-                                spread out on the table - Samsa was a travelling
-                                salesman - and above it there hung a picture
-                              </div>
-                              <div className="date">11:49 am</div>
-                            </Link>
-                          </div>
-                        </div>
-                        <div className="message unread">
-                          <div>
-                            <div className="d-flex message-single">
-                              <div className="pl-1 align-self-center">
-                                <div className="form-check custom-checkbox">
-                                  <input
-                                    type="checkbox"
-                                    className="form-check-input"
-                                    onClick={() => chackboxFun()}
-                                    id="checkbox15"
-                                  />
-                                  <label
-                                    className="form-check-label"
-                                    htmlFor="checkbox15"
-                                  />
-                                </div>
-                              </div>
-                              <div className="ms-2">
-                                <button className="border-0 bg-transparent align-middle p-0">
-                                  <i className="fa fa-star" 
-                                    onClick={(e)=>e.target.classList.toggle('yellow')}
-                                  />
-                                </button>
-                              </div>
-                            </div>
-                            <Link to="/email-read" className="col-mail col-mail-2">
-                              <div className="subject">
-                                Almost unorthographic life One day however a small
-                                line of blind text by the name of Lorem Ipsum decided
-                                to leave for the far World of Grammar.
-                              </div>
-                              <div className="date">11:49 am</div>
-                            </Link>
-                          </div>
-                        </div>
-                        <div className="message">
-                          <div>
-                            <div className="d-flex message-single">
-                              <div className="pl-1 align-self-center">
-                                <div className="form-check custom-checkbox">
-                                  <input
-                                    type="checkbox"
-                                    className="form-check-input"
-                                    onClick={() => chackboxFun()}
-                                    id="checkbox16"
-                                  />
-                                  <label
-                                    className="form-check-label"
-                                    htmlFor="checkbox16"
-                                  />
-                                </div>
-                              </div>
-                              <div className="ms-2">
-                                <button className="border-0 bg-transparent align-middle p-0">
-                                  <i className="fa fa-star" 
-                                    onClick={(e)=>e.target.classList.toggle('yellow')}
-                                  />
-                                </button>
-                              </div>
-                            </div>
-                            <Link to="/email-read" className="col-mail col-mail-2">
-                              <div className="subject">
-                                Pointing has no control about the blind texts it is an
-                                almost unorthographic life One day however a small
-                                line of blind text by the name of
-                              </div>
-                              <div className="date">11:49 am</div>
-                            </Link>
-                          </div>
-                        </div>
-                        <div className="message">
-                          <div>
-                            <div className="d-flex message-single">
-                              <div className="pl-1 align-self-center">
-                                <div className="form-check custom-checkbox">
-                                  <input
-                                    type="checkbox"
-                                    className="form-check-input"
-                                    onClick={() => chackboxFun()}
-                                    id="checkbox17"
-                                  />
-                                  <label
-                                    className="form-check-label"
-                                    htmlFor="checkbox17"
-                                  />
-                                </div>
-                              </div>
-                              <div className="ms-2">
-                                <button className="border-0 bg-transparent align-middle p-0">
-                                  <i className="fa fa-star" 
-                                    onClick={(e)=>e.target.classList.toggle('yellow')}
-                                  />
-                                </button>
-                              </div>
-                            </div>
-                            <Link to="/email-read" className="col-mail col-mail-2">
-                              <div className="subject">
-                                Even the all-powerful Pointing has no control about
-                                the blind texts it is an almost unorthographic life
-                                One day however a small line of blind text by the name
-                                of
-                              </div>
-                              <div className="date">11:49 am</div>
-                            </Link>
-                          </div>
-                        </div>
-                        <div className="message">
-                          <div>
-                            <div className="d-flex message-single">
-                              <div className="pl-1 align-self-center">
-                                <div className="form-check custom-checkbox">
-                                  <input
-                                    type="checkbox"
-                                    className="form-check-input"
-                                    onClick={() => chackboxFun()}
-                                    id="checkbox18"
-                                  />
-                                  <label
-                                    className="form-check-label"
-                                    htmlFor="checkbox18"
-                                  />
-                                </div>
-                              </div>
-                              <div className="ms-2">
-                                <button className="border-0 bg-transparent align-middle p-0">
-                                  <i className="fa fa-star" 
-                                    onClick={(e)=>e.target.classList.toggle('yellow')}
-                                  />
-                                </button>
-                              </div>
-                            </div>
-                            <Link to="/email-read" className="col-mail col-mail-2">
-                              <div className="subject">
-                                Ingredia Nutrisha, A collection of textile samples lay
-                                spread out on the table - Samsa was a travelling
-                                salesman - and above it there hung a picture
-                              </div>
-                              <div className="date">11:49 am</div>
-                            </Link>
-                          </div>
-                        </div>
-                        <div className="message">
-                          <div>
-                            <div className="d-flex message-single">
-                              <div className="pl-1 align-self-center">
-                                <div className="form-check custom-checkbox">
-                                  <input
-                                    type="checkbox"
-                                    className="form-check-input"
-                                    onClick={() => chackboxFun()}
-                                    id="checkbox19"
-                                  />
-                                  <label
-                                    className="form-check-label"
-                                    htmlFor="checkbox19"
-                                  />
-                                </div>
-                              </div>
-                              <div className="ms-2">
-                                <button className="border-0 bg-transparent align-middle p-0">
-                                  <i className="fa fa-star" 
-                                    onClick={(e)=>e.target.classList.toggle('yellow')}
-                                  />
-                                </button>
-                              </div>
-                            </div>
-                            <Link to="/email-read" className="col-mail col-mail-2">
-                              <div className="subject">
-                                Almost unorthographic life One day however a small
-                                line of blind text by the name of Lorem Ipsum decided
-                                to leave for the far World of Grammar.
-                              </div>
-                              <div className="date">11:49 am</div>
-                            </Link>
-                          </div>
-                        </div>
-                        <div className="message unread">
-                          <div>
-                            <div className="d-flex message-single">
-                              <div className="pl-1 align-self-center">
-                                <div className="form-check custom-checkbox">
-                                  <input
-                                    type="checkbox"
-                                    className="form-check-input"
-                                    onClick={() => chackboxFun()}
-                                    id="checkbox20"
-                                  />
-                                  <label
-                                    className="form-check-label"
-                                    htmlFor="checkbox20"
-                                  />
-                                </div>
-                              </div>
-                              <div className="ms-2">
-                                <button className="border-0 bg-transparent align-middle p-0">
-                                  <i className="fa fa-star" 
-                                    onClick={(e)=>e.target.classList.toggle('yellow')}
-                                  />
-                                </button>
-                              </div>
-                            </div>
-                            <Link to="/email-read" className="col-mail col-mail-2">
-                              <div className="subject">
-                                Pointing has no control about the blind texts it is an
-                                almost unorthographic life One day however a small
-                                line of blind text by the name of
-                              </div>
-                              <div className="date">11:49 am</div>
-                            </Link>
-                          </div>
-                        </div>
-                        <div className="message">
-                          <div>
-                            <div className="d-flex message-single">
-                              <div className="pl-1 align-self-center">
-                                <div className="form-check custom-checkbox">
-                                  <input
-                                    type="checkbox"
-                                    className="form-check-input"
-                                    onClick={() => chackboxFun()}
-                                    id="checkbox21"
-                                  />
-                                  <label
-                                    className="form-check-label"
-                                    htmlFor="checkbox21"
-                                  />
-                                </div>
-                              </div>
-                              <div className="ms-2">
-                                <button className="border-0 bg-transparent align-middle p-0">
-                                  <i className="fa fa-star" 
-                                    onClick={(e)=>e.target.classList.toggle('yellow')}
-                                  />
-                                </button>
-                              </div>
-                            </div>
-                            <Link to="/email-read" className="col-mail col-mail-2">
-                              <div className="subject">
-                                Even the all-powerful Pointing has no control about
-                                the blind texts it is an almost unorthographic life
-                                One day however a small line of blind text by the name
-                                of
-                              </div>
-                              <div className="date">11:49 am</div>
-                            </Link>
-                          </div>
-                        </div>
-                      </div>
+                      </ListGroup.Item>
+                    </ListGroup>
+                  </Col>
 
-                      <div className="row mt-4">
-                        <div className="col-12 pl-3">
-                          <nav>
-                            <ul className="pagination pagination-gutter pagination-primary pagination-sm no-bg">
-                              <li className="page-item page-indicator">
-                                <Link
-                                  className="page-link"
-                                  to="/email-inbox"
-                                  onClick={() =>
-                                    activePag.current > 0 &&
-                                    onClick(activePag.current - 1)
-                                  }
+                  {/* Main Content */}
+                  <Col md={8}>
+                    {selectedEmail ? (
+                      <Card className="mb-3">
+                        <Card.Header as="h5">{selectedEmail.subject}</Card.Header>
+                        <Card.Body>
+                          <p>
+                            <strong>From:</strong> {selectedEmail.sender}
+                          </p>
+                          <p>
+                            <strong>To:</strong> {selectedEmail.recipient}
+                          </p>
+                          {selectedEmail.cc && (
+                            <p>
+                              <strong>CC:</strong> {selectedEmail.cc}
+                            </p>
+                          )}
+                          <p>
+                            <strong>Date:</strong> {selectedEmail.timestamp}
+                          </p>
+                          <hr />
+                          <p>{selectedEmail.body}</p>
+                        </Card.Body>
+                        <Card.Footer>
+                          <Button variant="secondary" onClick={() => setSelectedEmail(null)}>
+                            Back to Inbox
+                          </Button>
+                        </Card.Footer>
+                      </Card>
+                    ) : (
+                      <Card>
+                        <Card.Header>
+                          <Row className="align-items-center">
+                            <Col>Inbox</Col>                         
+                          </Row>
+                        </Card.Header>
+                        <Card.Body style={{ maxHeight: "400px", overflowY: "auto" }}>
+                          {emails.length === 0 ? (
+                            <p className="text-center text-muted">No emails available</p>
+                          ) : (
+                            emails.map((email) => (
+                              <ListGroup key={email.id} variant="flush" className="mb-2">
+                                <ListGroup.Item 
+                                  action 
+                                  onClick={() => setSelectedEmail(email)}
+                                  className={email.is_read ? "" : "bg-light"}
                                 >
-                                  <i className="la la-angle-left"></i>
-                                </Link>
-                              </li>
-                              {paggination.map((number, i) => (
-                                <li
-                                  key={i}
-                                  className={`page-item  ${
-                                    activePag.current === i ? "active" : ""
-                                  } `}
-                                  onClick={() => onClick(i)}
-                                >
-                                  <Link className="page-link" to="/email-inbox">
-                                    {number}
-                                  </Link>
-                                </li>
-                              ))}
-
-                              <li className="page-item page-indicator">
-                                <Link
-                                  className="page-link"
-                                  to="/email-inbox"
-                                  onClick={() =>
-                                    activePag.current + 1 < paggination.length &&
-                                    onClick(activePag.current + 1)
-                                  }
-                                >
-                                  <i className="la la-angle-right"></i>
-                                </Link>
-                              </li>
-                            </ul>
-                          </nav>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
+                                  <Row>
+                                    <Col xs={2}>
+                                      <Button variant="link" className="p-0">
+                                        <i className="fa fa-star"></i>
+                                      </Button>
+                                    </Col>
+                                    <Col>
+                                      <div className="fw-bold">{email.subject}</div>
+                                      <div className="small text-muted">{email.timestamp}</div>
+                                    </Col>
+                                  </Row>
+                                </ListGroup.Item>
+                              </ListGroup>
+                            ))
+                          )}
+                        </Card.Body>
+                      </Card>
+                    )}
+                  </Col>
+                </Row>
+              </Card.Body>
+            </Card>
+          </Col>
+        </Row>
+      </Container>
     </Fragment>
   );
 };

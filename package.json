@@ -23,6 +23,8 @@
     "axios": "^1.6.8",
     "chart.js": "^4.4.6",
     "chartjs-adapter-date-fns": "^3.0.0",
+    "chartjs-plugin-datalabels": "^2.2.0",
+    "date-fns": "^4.1.0",
     "formik": "^2.4.6",
     "html2canvas": "^1.4.1",
     "jspdf": "^3.0.0",

@@ -20,6 +20,7 @@ import Swal from "sweetalert2";
 import { FaEdit, FaTrash, FaArrowUp, FaArrowDown, FaEye } from "react-icons/fa";
 import EditOrderModal from "./EditOrderModal";
 import PremiumRateForm from "./PremiumRateForm";
+import axios from "axios";
 
 import {
   fetchOrdersAction,
@@ -38,10 +39,6 @@ import {
   deletePremiumRateAction,
 } from "../../../store/actions/OrderActions";
 
-/* ===========================
-   SubmitOrderForm Component
-   =========================== */
-// Memoized to preserve focus in the inputs.
 const SubmitOrderForm = React.memo(
   ({
     isEditMode,
@@ -57,10 +54,10 @@ const SubmitOrderForm = React.memo(
     setCurrency,
     tradeType,
     setTradeType,
-    optionType,      // NEW PROP for option type (CALL/PUT)
-    setOptionType,   // NEW PROP setter
-    strike,          // NEW PROP for strike (optional)
-    setStrike,       // NEW PROP setter
+    optionType,
+    setOptionType,
+    strike,
+    setStrike,
     onSubmit,
     onCancel,
   }) => {
@@ -231,9 +228,6 @@ const SubmitOrderForm = React.memo(
   }
 );
 
-/* ===========================
-   FutureTrading Component
-   =========================== */
 const FutureTrading = () => {
   const dispatch = useDispatch();
   const [selectedFile, setSelectedFile] = useState(null);
@@ -255,9 +249,7 @@ const FutureTrading = () => {
   const [activeTab, setActiveTab] = useState(initialClientTab);
 
   // New filter states:
-  // For admin: search orders by client name.
   const [adminClientSearch, setAdminClientSearch] = useState("");
-  // For clients: filter orders by trade category.
   const [clientCategoryFilter, setClientCategoryFilter] = useState("All");
 
   // Admin edit modal state
@@ -265,13 +257,13 @@ const FutureTrading = () => {
   const [editingOrder, setEditingOrder] = useState(null);
   const [isEditMode, setIsEditMode] = useState(false);
 
-  // Admin fields (for Market/Matched orders)
+  // Admin fields for Market/Matched orders
   const [status, setStatus] = useState("");
   const [executionRate, setExecutionRate] = useState("");
   const [bankName, setBankName] = useState("");
   const [historicalLoss, setHistoricalLoss] = useState("");
 
-  // Shared client form fields for create/edit
+  // Shared client form fields
   const [amount, setAmount] = useState("");
   const [bankAccount, setBankAccount] = useState("");
   const [transactionType, setTransactionType] = useState("buy");
@@ -283,7 +275,7 @@ const FutureTrading = () => {
   const [optionType, setOptionType] = useState("CALL");
   const [strike, setStrike] = useState("");
 
-  // Reset active page if orders length changes
+  // Pagination: reset active page if orders change
   useEffect(() => {
     const totalPages = Math.ceil(orders.length / itemsPerPage);
     if (activePage > totalPages && totalPages > 0) {
@@ -304,7 +296,6 @@ const FutureTrading = () => {
         dispatch(fetchPremiumRatesAction());
       }
     } else {
-      // Clients fetch only their own orders
       dispatch(fetchOrdersAction(isAdmin));
     }
   }, [dispatch, activeTab, isAdmin]);
@@ -333,6 +324,43 @@ const FutureTrading = () => {
     }
   };
 
+  // --- Generate Data Button ---
+  const handleGenerateData = async () => {
+    const token = localStorage.getItem("accessToken");
+    if (!token) {
+      Swal.fire({
+        icon: "error",
+        title: "Authentication Error",
+        text: "No token found. Please login.",
+      });
+      return;
+    }
+    // For admin, use /generate-excel-data; for clients, use /generate-my-excel
+    const endpoint = isAdmin
+      ? "http://localhost:5001/admin/generate-excel-data"
+      : "http://localhost:5001/admin/generate-my-excel";
+    try {
+      const response = await axios.get(endpoint, {
+        headers: { Authorization: `Bearer ${token}` },
+        responseType: "blob",
+      });
+      const url = window.URL.createObjectURL(new Blob([response.data]));
+      const link = document.createElement("a");
+      link.href = url;
+      link.setAttribute("download", "OrdersReport.xlsx");
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+    } catch (error) {
+      console.error("Error generating excel file", error);
+      Swal.fire({
+        icon: "error",
+        title: "Download Failed",
+        text: "Unable to generate Excel data. Please try again.",
+      });
+    }
+  };
+
   // --- Handler Functions (using useCallback) ---
   const handleSubmitOrder = useCallback(() => {
     if (!amount || !transactionType || !bankAccount || !valueDate || !currency) {
@@ -351,9 +379,8 @@ const FutureTrading = () => {
       currency,
       bank_account: bankAccount,
       is_option: isOption,
-      trade_type: tradeType,  // NEW: include trade type (spot/forward/option)
+      trade_type: tradeType, // includes "spot", "forward", or "option"
     };
-    // NEW: If option, include optionType and (if provided) strike.
     if (isOption) {
       orderData.option_type = optionType;
       if (strike) {
@@ -391,9 +418,8 @@ const FutureTrading = () => {
       value_date: valueDate,
       currency,
       is_option: isOption,
-      trade_type: tradeType,  // NEW: include updated trade type
+      trade_type: tradeType,
     };
-    // NEW: Include option data if applicable.
     if (isOption) {
       updatedOrderData.option_type = optionType;
       if (strike) {
@@ -420,7 +446,6 @@ const FutureTrading = () => {
       });
   }, [editingOrder, amount, bankAccount, transactionType, valueDate, currency, tradeType, optionType, strike, dispatch, isAdmin]);
 
-  // --- Delete Order ---
   const handleDeleteOrder = (orderId) => {
     Swal.fire({
       title: "Are you sure?",
@@ -441,7 +466,6 @@ const FutureTrading = () => {
     });
   };
 
-  // --- When editing an order (client) ---
   const handleEditOrderClick = (order) => {
     setEditingOrder(order);
     setAmount(order.amount);
@@ -458,7 +482,6 @@ const FutureTrading = () => {
     if (!isAdmin) setActiveTab("NewTrade");
   };
 
-  // --- Reset Form ---
   const resetForm = () => {
     setAmount("");
     setBankAccount("");
@@ -466,14 +489,12 @@ const FutureTrading = () => {
     setValueDate("");
     setCurrency("USD");
     setTradeType("spot");
-    // NEW: Reset option fields
     setOptionType("CALL");
     setStrike("");
     setIsEditMode(false);
     setEditingOrder(null);
   };
 
-  // --- Admin Actions for Market/Matched Orders ---
   const handleEditClick = (order, tab) => {
     setEditingOrder(order);
     setStatus(order.status || "");
@@ -551,12 +572,11 @@ const FutureTrading = () => {
       });
   };
 
-  // --- Pagination ---
   const handlePageChange = (page) => {
     setActivePage(page);
   };
 
-  // --- OrderTable Component ---
+  // OrderTable Component
   const OrderTable = ({
     orders,
     isAdmin,
@@ -565,7 +585,6 @@ const FutureTrading = () => {
     showRateAndBank,
     additionalAttributes = [],
   }) => {
-    // Paginate the (already filtered) orders array.
     const currentOrders = orders.slice(
       (activePage - 1) * itemsPerPage,
       activePage * itemsPerPage
@@ -580,7 +599,7 @@ const FutureTrading = () => {
                 <th>Transaction Type</th>
                 <th>Amount</th>
                 <th>Currency</th>
-                <th>Trade Type</th> {/* NEW: New column for trade type */}
+                <th>Trade Type</th>
                 <th>Status</th>
                 <th>Value Date</th>
                 {additionalAttributes.map((attr, i) => (
@@ -612,7 +631,11 @@ const FutureTrading = () => {
                   </td>
                   <td>{order.amount}</td>
                   <td>{order.currency}</td>
-                  <td>{order.trade_type ? order.trade_type.charAt(0).toUpperCase() + order.trade_type.slice(1) : "N/A"}</td>
+                  <td>
+                    {order.trade_type
+                      ? order.trade_type.toUpperCase()
+                      : "N/A"}
+                  </td>
                   <td>{order.status}</td>
                   <td>{order.value_date}</td>
                   {additionalAttributes.map((attr, j) => (
@@ -679,36 +702,49 @@ const FutureTrading = () => {
               {number + 1}
             </Pagination.Item>
           ))}
-          <Pagination.Next onClick={() => handlePageChange(activePage + 1)} disabled={activePage === Math.ceil(orders.length / itemsPerPage)} />
-          <Pagination.Last onClick={() => handlePageChange(Math.ceil(orders.length / itemsPerPage))} disabled={activePage === Math.ceil(orders.length / itemsPerPage)} />
+          <Pagination.Next
+            onClick={() => handlePageChange(activePage + 1)}
+            disabled={activePage === Math.ceil(orders.length / itemsPerPage)}
+          />
+          <Pagination.Last
+            onClick={() => handlePageChange(Math.ceil(orders.length / itemsPerPage))}
+            disabled={activePage === Math.ceil(orders.length / itemsPerPage)}
+          />
         </Pagination>
       </div>
     );
   };
 
-  // --- Filtering for Admin and Clients ---
-  // For Admin Orders: filter by client name.
-  const filteredAdminOrders = isAdmin && activeTab === "Order"
-    ? orders.filter(
-        (order) =>
-          order.client_name &&
-          order.client_name.toLowerCase().includes(adminClientSearch.toLowerCase())
-      )
-    : orders;
+  const filteredAdminOrders =
+    isAdmin && activeTab === "Order"
+      ? orders.filter(
+          (order) =>
+            order.client_name &&
+            order.client_name.toLowerCase().includes(adminClientSearch.toLowerCase())
+        )
+      : orders;
 
-  // For Clients: filter by trade category.
-  const filteredClientOrders = !isAdmin && activeTab === "MyOrders"
-    ? orders.filter((order) =>
-        clientCategoryFilter === "All"
-          ? true
-          : order.trade_type &&
-            order.trade_type.toLowerCase() === clientCategoryFilter.toLowerCase()
-      )
-    : orders;
+  const filteredClientOrders =
+    !isAdmin && activeTab === "MyOrders"
+      ? orders.filter((order) =>
+          clientCategoryFilter === "All"
+            ? true
+            : order.trade_type &&
+              order.trade_type.toLowerCase() === clientCategoryFilter.toLowerCase()
+        )
+      : orders;
 
-  // --- Rendering Layout ---
   return (
     <div className="container-fluid">
+      <div className="row mb-3">
+        {/* Generate Data Button */}
+        <div className="col-12 d-flex justify-content-end">
+          <Button variant="info" onClick={handleGenerateData}>
+            Generate Data
+          </Button>
+        </div>
+      </div>
+
       <div className="row">
         {/* File Upload (Clients) */}
         {!isAdmin && (
@@ -725,7 +761,7 @@ const FutureTrading = () => {
         )}
 
         {isAdmin ? (
-          // --- Admin View (with client search filter) ---
+          // Admin View
           <div className="col-12">
             <div className="card shadow-sm">
               <Tab.Container activeKey={activeTab} onSelect={(key) => setActiveTab(key)}>
@@ -747,7 +783,6 @@ const FutureTrading = () => {
                   </Nav>
                 </div>
                 <div className="card-body pt-0">
-                  {/* Client search input for Admin */}
                   {activeTab === "Order" && (
                     <Row className="mb-3">
                       <Col md={4}>
@@ -788,14 +823,13 @@ const FutureTrading = () => {
                             setCurrency={setCurrency}
                             tradeType={tradeType}
                             setTradeType={setTradeType}
-                            optionType={optionType}           // NEW PROP
-                            setOptionType={setOptionType}     // NEW PROP
-                            strike={strike}                   // NEW PROP
-                            setStrike={setStrike}             // NEW PROP
+                            optionType={optionType}
+                            setOptionType={setOptionType}
+                            strike={strike}
+                            setStrike={setStrike}
                             onSubmit={isEditMode ? handleUpdateOrder : handleSubmitOrder}
                             onCancel={() => {
                               resetForm();
-                              // In admin view, the form remains visible.
                             }}
                           />
                         </div>
@@ -836,7 +870,7 @@ const FutureTrading = () => {
             </div>
           </div>
         ) : (
-          // --- Client View: Two Tabs – "My Orders" and "New Trade" with trade category filter ---
+          // Client View
           <div className="col-12">
             <Tab.Container activeKey={activeTab} onSelect={(key) => setActiveTab(key)}>
               <div className="card shadow-sm mb-3">
@@ -891,10 +925,10 @@ const FutureTrading = () => {
                         setCurrency={setCurrency}
                         tradeType={tradeType}
                         setTradeType={setTradeType}
-                        optionType={optionType}           // NEW PROP
-                        setOptionType={setOptionType}     // NEW PROP
-                        strike={strike}                   // NEW PROP
-                        setStrike={setStrike}             // NEW PROP
+                        optionType={optionType}
+                        setOptionType={setOptionType}
+                        strike={strike}
+                        setStrike={setStrike}
                         onSubmit={isEditMode ? handleUpdateOrder : handleSubmitOrder}
                         onCancel={() => {
                           resetForm();

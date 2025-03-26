@@ -120,18 +120,18 @@ export const MenuList = [
         title: "Email",
         hasMenu: true,
         content: [
-          {
-            title: "Compose",
-            to: "email-compose",
-          },
+          // {
+          //   title: "Compose",
+          //   to: "email-compose",
+          // },
           {
             title: "Inbox",
             to: "email-inbox",
           },
-          {
-            title: "Read",
-            to: "email-read",
-          },
+          // {
+          //   title: "Read",
+          //   to: "email-read",
+          // },
         ],
       },
       // {
