@@ -9,7 +9,7 @@ const CalendlyPopup = () => {
         rootElement={document.getElementById("root")}
         text="Schedule a Meeting"
         textColor="#ffffff"
-        color="    #3736af"
+        color="    #002155"
       />
     </div>
   );

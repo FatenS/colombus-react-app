@@ -59,11 +59,11 @@ const Inbox = () => {
                 <Row>
                   {/* Sidebar */}
                   <Col md={4} className="border-end">
-                    <div className="mb-4 text-center">
+                    {/* <div className="mb-4 text-center">
                       <Link to="/email-compose" className="btn btn-primary">
                         Compose
                       </Link>
-                    </div>
+                    </div> */}
                     <ListGroup variant="flush">
                       <ListGroup.Item 
                         action 

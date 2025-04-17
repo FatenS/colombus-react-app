@@ -15,7 +15,7 @@ body {
   align-items: center;
   padding: 1rem 2rem;
   color: white;
-  background: #3736af;
+  background: #002155;
 }
 
 .headerr .logo img {
@@ -135,9 +135,9 @@ body {
 .hero-section {
   background: linear-gradient(
     135deg,
-    #3736af 0%,
-    /* Deep Blue (matches your header color) */ #6160d2 40%,
-    /* Softened blue for a smooth transition */ #525cb1 100%
+    #002155 0%,
+    /* Deep Blue (matches your header color) */ #002155 40%,
+    /* Softened blue for a smooth transition */ #002155 100%
       /* Lighter blue for a modern, clean finish */
   );
   color: #ffffff; /* Text color */

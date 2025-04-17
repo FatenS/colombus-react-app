@@ -264,7 +264,7 @@ Fixing Order => Base + Typography >> General Layout + Grid >> Page Layout + Comp
  */
 :root {
   --bs-blue: #391995;
-  --bs-indigo: #6610f2;
+  --bs-indigo: #002155;
   --bs-purple: #6f42c1;
   --bs-pink: #e83e8c;
   --bs-red: #ee3232;
@@ -11626,7 +11626,7 @@ h6,
 }
 
 .text-indigo {
-  color: #6610f2;
+  color: #002155;
 }
 
 .text-purple {
@@ -17285,7 +17285,7 @@ Fixing Order => Base + Typography >> General Layout + Grid >> Page Layout + Comp
 .sidebar-right #header_color_2 + label,
 .sidebar-right #sidebar_color_2 + label,
 .sidebar-right #primary_color_2 + label {
-  background-color: #6610f2;
+  background-color: #002155;
 }
 .sidebar-right #nav_header_color_3 + label,
 .sidebar-right #header_color_3 + label,
@@ -17969,7 +17969,7 @@ Fixing Order => Base + Typography >> General Layout + Grid >> Page Layout + Comp
 
 [data-nav-headerbg="color_2"][data-theme-version="dark"],
 [data-nav-headerbg="color_2"] {
-  --nav-headbg: #6610f2;
+  --nav-headbg: #002155;
 }
 [data-nav-headerbg="color_2"][data-theme-version="dark"] .nav-header,
 [data-nav-headerbg="color_2"] .nav-header {
@@ -18781,7 +18781,7 @@ Fixing Order => Base + Typography >> General Layout + Grid >> Page Layout + Comp
 
 [data-sibebarbg="color_2"][data-theme-version="dark"],
 [data-sibebarbg="color_2"] {
-  --sidebar-bg: #6610f2;
+  --sidebar-bg: #002155;
   /* .hamburger .line{
   	background:$white;
   } */
@@ -18799,7 +18799,7 @@ Fixing Order => Base + Typography >> General Layout + Grid >> Page Layout + Comp
   li
   > ul,
 [data-sibebarbg="color_2"] .menu-toggle .dlabnav .metismenu li > ul {
-  background: #6610f2 !important;
+  background: #002155 !important;
 }
 [data-sibebarbg="color_2"][data-theme-version="dark"]
   .dlabnav
@@ -24097,7 +24097,7 @@ Fixing Order => Base + Typography >> General Layout + Grid >> Page Layout + Comp
 
 [data-headerbg="color_2"][data-theme-version="dark"],
 [data-headerbg="color_2"] {
-  --headerbg: #6610f2;
+  --headerbg: #002155;
 }
 [data-headerbg="color_2"][data-theme-version="dark"]
   .search-area
@@ -25712,7 +25712,7 @@ Fixing Order => Base + Typography >> General Layout + Grid >> Page Layout + Comp
 }
 
 [data-primary="color_2"] {
-  --primary: #6610f2;
+  --primary: #002155;
   --secondary: #391995;
   --primary-hover: #510bc4;
   --primary-dark: #290564;

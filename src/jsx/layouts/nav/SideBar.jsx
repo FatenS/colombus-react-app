@@ -3,6 +3,7 @@ import { Collapse } from "react-bootstrap";
 /// Link
 import { Link } from "react-router-dom";
 import { MenuList } from "./Menu";
+import logoFull from "../../../assets/images/white.png";
 
 import { useScrollPosition } from "@n8tb1t/use-scroll-position";
 import { ThemeContext } from "../../../context/ThemeContext";
@@ -74,6 +75,7 @@ const SideBar = () => {
 
   return (
     <div
+
       onMouseEnter={() => ChangeIconSidebar(true)}
       onMouseLeave={() => ChangeIconSidebar(false)}
       className={`dlabnav ${
