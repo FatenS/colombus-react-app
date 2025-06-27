@@ -2,7 +2,7 @@ import React  from 'react';
 import {connect, useDispatch } from 'react-redux';
 import {  useLocation, useNavigate, useParams } from 'react-router-dom';
 
-import { Logout } from '../../../store/actions/AuthActions';
+import { logout } from '../../../store/actions/AuthActions';
 import { isAuthenticated } from '../../../store/selectors/AuthSelectors';
 
 function withRouter(Component) {
@@ -25,11 +25,14 @@ function LogoutPage(){
     const dispatch = useDispatch();
     const navigate = useNavigate();
     function onLogout() {
-       dispatch(Logout(navigate));
+       dispatch(logout(navigate));
     }
     return(
         <>
-            <button  className="dropdown-item ai-icon ms-1" onClick={onLogout}>
+            <button
+      className="dropdown-item ai-icon ms-1"
+      onClick={() => dispatch(logout(navigate))}
+    >
                 <svg
                   id="icon-logout" xmlns="http://www.w3.org/2000/svg"
                   className="text-danger logout" width={18} height={18} viewBox="0 0 24 24" 

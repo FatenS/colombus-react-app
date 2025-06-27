@@ -19,9 +19,8 @@ import { useDispatch, useSelector } from "react-redux";
 import Swal from "sweetalert2";
 import { FaEdit, FaTrash, FaArrowUp, FaArrowDown, FaEye } from "react-icons/fa";
 import EditOrderModal from "./EditOrderModal";
+import BulkOrdersUpload from "./BulkOrdersUpload";
 import PremiumRateForm from "./PremiumRateForm";
-import axios from "axios";
-
 import {
   fetchOrdersAction,
   fetchMatchedOrdersAction,
@@ -38,7 +37,7 @@ import {
   updatePremiumRateAction,
   deletePremiumRateAction,
 } from "../../../store/actions/OrderActions";
-
+import axiosInstance from "../../../services/AxiosInstance";
 const SubmitOrderForm = React.memo(
   ({
     isEditMode,
@@ -326,24 +325,18 @@ const FutureTrading = () => {
 
   // --- Generate Data Button ---
   const handleGenerateData = async () => {
-    const token = localStorage.getItem("accessToken");
-    if (!token) {
-      Swal.fire({
-        icon: "error",
-        title: "Authentication Error",
-        text: "No token found. Please login.",
-      });
-      return;
-    }
-    // For admin, use /generate-excel-data; for clients, use /generate-my-excel
+    // choose the correct path; axiosInstance already adds the baseURL
     const endpoint = isAdmin
-      ? "http://localhost:5001/admin/generate-excel-data"
-      : "http://localhost:5001/admin/generate-my-excel";
+      ? "/admin/generate-excel-data"
+      : "/admin/generate-my-excel";
+  
     try {
-      const response = await axios.get(endpoint, {
-        headers: { Authorization: `Bearer ${token}` },
-        responseType: "blob",
+      // axiosInstance automatically sends cookies + CSRF header
+      const response = await axiosInstance.get(endpoint, {
+        responseType: "blob",          // we want a file stream
       });
+  
+      // create a temporary link to download the generated Excel file
       const url = window.URL.createObjectURL(new Blob([response.data]));
       const link = document.createElement("a");
       link.href = url;
@@ -352,7 +345,7 @@ const FutureTrading = () => {
       link.click();
       link.remove();
     } catch (error) {
-      console.error("Error generating excel file", error);
+      console.error("Error generating Excel file", error);
       Swal.fire({
         icon: "error",
         title: "Download Failed",
@@ -591,6 +584,7 @@ const FutureTrading = () => {
     );
     return (
       <div>
+        
         <div className="table-responsive">
           <table className="table shadow-hover orderbookTable">
             <thead>
@@ -739,8 +733,8 @@ const FutureTrading = () => {
       <div className="row mb-3">
         {/* Generate Data Button */}
         <div className="col-12 d-flex justify-content-end">
-          <Button variant="info" onClick={handleGenerateData}>
-            Generate Data
+          <Button className="mt-2" variant="primary" onClick={handleGenerateData}>
+            Generate excel data
           </Button>
         </div>
       </div>
@@ -783,6 +777,15 @@ const FutureTrading = () => {
                   </Nav>
                 </div>
                 <div className="card-body pt-0">
+                {isAdmin && (
+                      <Row className="mb-3">
+                        <Col md={6}>
+                          <BulkOrdersUpload />           
+                        </Col>
+                        <Col md={6} className="d-flex justify-content-end">
+                            </Col>
+                      </Row>
+                    )}
                   {activeTab === "Order" && (
                     <Row className="mb-3">
                       <Col md={4}>
@@ -965,6 +968,9 @@ const FutureTrading = () => {
         onSaveChanges={handleSaveChanges}
         activeTab={activeTab}
       />
+
+
+
     </div>
   );
 };

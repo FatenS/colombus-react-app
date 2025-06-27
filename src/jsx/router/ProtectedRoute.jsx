@@ -1,26 +1,19 @@
-// ProtectedRoute.jsx
 import React, { useEffect, useState } from "react";
-import { useSelector } from "react-redux";
+import { useDispatch, useSelector } from "react-redux";
 import { Navigate } from "react-router-dom";
 import { isAuthenticated } from "../../store/selectors/AuthSelectors";
 import { checkAutoLogin } from "../../services/AuthService";
 
 const ProtectedRoute = ({ children }) => {
+  const dispatch = useDispatch();
   const auth = useSelector(isAuthenticated);
-  const [checkingAuth, setCheckingAuth] = useState(true);
+  const [checking, setChecking] = useState(true);
 
   useEffect(() => {
-    // Force a quick check for token in localStorage
-    checkAutoLogin(/* dispatch from Redux store if needed */);
-    // Wait one tick, then mark checking done
-    setCheckingAuth(false);
-  }, []);
+    checkAutoLogin(dispatch).finally(() => setChecking(false));
+  }, [dispatch]);
 
-  if (checkingAuth) {
-    // Show spinner or blank screen while we check
-    return <div>Loading...</div>;
-  }
-
+  if (checking) return <div>Loading...</div>;
   return auth ? children : <Navigate to="/login" replace />;
 };
 

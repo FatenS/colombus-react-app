@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo } from "react";
 import Select from "react-select";
 import DatePicker from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css";
-import axios from "axios";
+import axiosInstance from "../../../services/AxiosInstance"; 
 import {
   BarChart,
   Bar,
@@ -52,24 +52,14 @@ const ExposureSummary = () => {
   const [fileOpenPos, setFileOpenPos] = useState(null);
   const [uploadMessageOpenPos, setUploadMessageOpenPos] = useState("");
 
-  // ------------------------------------------------
-  // Helper: get token from localStorage
-  // ------------------------------------------------
-  const getAuthHeaders = () => {
-    const token = localStorage.getItem("accessToken");
-    return {
-      Authorization: `Bearer ${token}`,
-    };
-  };
+
 
   // ------------------------------------------------
   // 4) Functions to fetch data from backend
   // ------------------------------------------------
   const fetchOpenPositions = async () => {
     try {
-      const response = await axios.get("http://localhost:5001/open-positions", {
-        headers: getAuthHeaders(),
-      });
+      const response = await axiosInstance.get("/open-positions");
       setOpenPositions(response.data);
     } catch (error) {
       console.error("Error fetching open positions", error);
@@ -78,10 +68,7 @@ const ExposureSummary = () => {
 
   const fetchForwardData = async () => {
     try {
-      const response = await axios.get(
-        "http://localhost:5001/api/calculate-forward-rate",
-        { headers: getAuthHeaders() }
-      );
+      const response = await axiosInstance.get("/api/calculate-forward-rate");
       setForwardData(response.data);
     } catch (error) {
       console.error("Error fetching forward rate data", error);
@@ -90,10 +77,7 @@ const ExposureSummary = () => {
 
   const fetchVarData = async () => {
     try {
-      const response = await axios.get(
-        "http://localhost:5001/api/calculate-var",
-        { headers: getAuthHeaders() }
-      );
+      const response = await axiosInstance.get("/api/calculate-var");
       setVarData(response.data);
     } catch (error) {
       console.error("Error fetching VaR data", error);
@@ -126,11 +110,8 @@ const ExposureSummary = () => {
     formData.append("file", fileOpenPos);
 
     try {
-      await axios.post("http://localhost:5001/upload-open-positions", formData, {
-        headers: {
-          ...getAuthHeaders(),
-          "Content-Type": "multipart/form-data",
-        },
+      await axiosInstance.post("/upload-open-positions", formData, {
+        headers: { "Content-Type": "multipart/form-data" },
       });
 
       setUploadMessageOpenPos("Open Positions file uploaded successfully.");
@@ -144,26 +125,21 @@ const ExposureSummary = () => {
   // ------------------------------------------------
   // 7) Convert function for open positions
   // ------------------------------------------------
-  const handleConvert = async (openPositionId) => {
-    try {
-      await axios.post(
-        `http://localhost:5001/convert-open-position/${openPositionId}`,
-        {},
-        {
-          headers: {
-            ...getAuthHeaders(),
-            "Content-Type": "application/json",
-          },
-        }
-      );
-      alert("Open position converted successfully!");
-      setOpenPositions((prev) => prev.filter((pos) => pos.id !== openPositionId));
-    } catch (error) {
-      console.error("Error converting open position:", error);
-      alert("Could not convert open position. Check console for details.");
-    }
-  };
+// ——— 7) Convert function for open positions ———
+const handleConvert = async (openPositionId) => {
+  try {
+    // axiosInstance already handles cookies & CSRF headers
+    await axiosInstance.post(`/convert-open-position/${openPositionId}`);
 
+    alert("Open position converted successfully!");
+    setOpenPositions(prev =>
+      prev.filter(pos => pos.id !== openPositionId)
+    );
+  } catch (error) {
+    console.error("Error converting open position:", error);
+    alert("Could not convert open position. Check console for details.");
+  }
+};
   // ------------------------------------------------
   // 8) Process open positions for the summary table
   // ------------------------------------------------

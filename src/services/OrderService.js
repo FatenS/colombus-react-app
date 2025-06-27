@@ -1,194 +1,61 @@
 
 //OrderService.js
+import axiosInstance from "./AxiosInstance";   // ← adjust relative path if needed
 
-import axios from 'axios';
-
-const API_URL = 'http://localhost:5001';
+// ────────────────────────────── Orders ─────────────────────────
 
 // Submit order (client)
-export const submitOrder = (orderData) => {
-    const token = localStorage.getItem('accessToken');
-    if (!token) {
-        throw new Error('Token not available');
-    }
-
-    return axios.post(`${API_URL}/orders`, orderData, {
-        headers: {
-            Authorization: `Bearer ${token}`,
-            'Content-Type': 'application/json'
-        },
-    });
-};
+export const submitOrder = (orderData) =>
+  axiosInstance.post("/orders", orderData);
 
 // Fetch orders (client or admin)
-export const fetchOrders = (isAdmin) => {
-    const token = localStorage.getItem('accessToken');
-    if (!token) {
-        throw new Error('Token not available');
-    }
+export const fetchOrders = (isAdmin) =>
+  axiosInstance.get(isAdmin ? "/admin/api/orders" : "/orders");
 
-    const endpoint = isAdmin ? '/admin/api/orders' : '/orders';
-    return axios.get(`${API_URL}${endpoint}`, {
-        headers: {
-            Authorization: `Bearer ${token}`,
-        },
-    });
-};
-
-// Fetch matched orders (admin only)
-export const fetchMatchedOrders = () => {
-    const token = localStorage.getItem('accessToken');
-    if (!token) {
-        throw new Error('Token not available');
-    }
-
-    return axios.get(`${API_URL}/admin/matched_orders`, {
-        headers: {
-            Authorization: `Bearer ${token}`,
-        },
-    });
-};
-
-// Run matching process (admin only)
-export const runMatching = () => {
-    const token = localStorage.getItem('accessToken');
-    if (!token) {
-        throw new Error('Token not available');
-    }
-
-    return axios.post(`${API_URL}/admin/run_matching`, {}, {
-        headers: {
-            Authorization: `Bearer ${token}`,
-        },
-    });
-};
-
-// Update order (admin)
-export const updateOrder = (orderId, updatedData) => {
-    const token = localStorage.getItem('accessToken');
-    if (!token) {
-        throw new Error('Token not available');
-    }
-
-    return axios.put(`http://localhost:5001/admin/api/orders/${orderId}`, updatedData, {
-        headers: {
-            Authorization: `Bearer ${token}`,
-            'Content-Type': 'application/json',
-        },
-    });
-};
-
-// Fetch market orders (admin only)
-export const fetchMarketOrders = () => {
-    const token = localStorage.getItem('accessToken');
-    if (!token) {
-        throw new Error('Token not available');
-    }
-
-    return axios.get(`${API_URL}/admin/market_orders`, {
-        headers: {
-            Authorization: `Bearer ${token}`,
-        },
-    });
-};
-// Upload orders in bulk (for clients)
-export const uploadOrders = (formData) => {
-    const token = localStorage.getItem('accessToken');
-    if (!token) {
-        throw new Error('Token not available');
-    }
-
-    return axios.post(`${API_URL}/upload-orders`, formData, {
-        headers: {
-            Authorization: `Bearer ${token}`,
-            'Content-Type': 'multipart/form-data',
-        },
-    });
-};
 // Delete order (client)
-export const deleteOrder = (orderId) => {
-    const token = localStorage.getItem("accessToken");
-    if (!token) {
-        throw new Error("Token not available");
-    }
-
-    return axios.delete(`${API_URL}/orders/${orderId}`, {
-        headers: {
-            Authorization: `Bearer ${token}`,
-        },
-    });
-};
+export const deleteOrder = (orderId) =>
+  axiosInstance.delete(`/orders/${orderId}`);
 
 // Update order (client)
-export const updateOrderClient = (orderId, updatedData) => {
-    const token = localStorage.getItem("accessToken");
-    if (!token) {
-        throw new Error("Token not available");
-    }
+export const updateOrderClient = (orderId, updatedData) =>
+  axiosInstance.put(`/orders/${orderId}`, updatedData);
 
-    return axios.put(`${API_URL}/orders/${orderId}`, updatedData, {
-        headers: {
-            Authorization: `Bearer ${token}`,
-            "Content-Type": "application/json",
-        },
-    });
-};
+// ───────────────────────── Admin-only endpoints ────────────────
 
+// Fetch matched orders
+export const fetchMatchedOrders = () =>
+  axiosInstance.get("/admin/matched_orders");
 
-// Fetch premium rates (admin only)
-export const fetchPremiumRates = () => {
-    const token = localStorage.getItem('accessToken');
-    if (!token) {
-        throw new Error('Token not available');
-    }
+// Fetch market orders
+export const fetchMarketOrders = () =>
+  axiosInstance.get("/admin/market_orders");
 
-    return axios.get(`${API_URL}/admin/api/premium-rate`, {
-        headers: {
-            Authorization: `Bearer ${token}`,
-        },
-    });
-};
+// Update order (admin panel)
+export const updateOrder = (orderId, updatedData) =>
+  axiosInstance.put(`/admin/api/orders/${orderId}`, updatedData);
 
-// Create premium rate (admin only)
-export const createPremiumRate = (rateData) => {
-    const token = localStorage.getItem('accessToken');
-    if (!token) {
-        throw new Error('Token not available');
-    }
+// Kick off matching process
+export const runMatching = () =>
+  axiosInstance.post("/admin/run_matching");
 
-    return axios.post(`${API_URL}/admin/api/premium-rate`, rateData, {
-        headers: {
-            Authorization: `Bearer ${token}`,
-            'Content-Type': 'application/json',
-        },
-    });
-};
+// ─────────────────────── Bulk Excel upload ─────────────────────
 
-// Update premium rate (admin only)
-export const updatePremiumRate = (rateId, rateData) => {
-    const token = localStorage.getItem('accessToken');
-    if (!token) {
-        throw new Error('Token not available');
-    }
+// Upload orders in bulk (Excel)
+export const uploadOrders = (formData) =>
+  axiosInstance.post("/upload-orders", formData, {
+    headers: { "Content-Type": "multipart/form-data" },
+  });
 
-    return axios.put(`${API_URL}/admin/api/premium-rate/${rateId}`, rateData, {
-        headers: {
-            Authorization: `Bearer ${token}`,
-            'Content-Type': 'application/json',
-        },
-    });
-};
+// ─────────────────────── Premium-rate CRUD ─────────────────────
 
-// Delete premium rate (admin only)
-export const deletePremiumRate = (rateId) => {
-    const token = localStorage.getItem('accessToken');
-    if (!token) {
-        throw new Error('Token not available');
-    }
+export const fetchPremiumRates = () =>
+  axiosInstance.get("/admin/api/premium-rate");
 
-    return axios.delete(`${API_URL}/admin/api/premium-rate/${rateId}`, {
-        headers: {
-            Authorization: `Bearer ${token}`,
-        },
-    });
-};
+export const createPremiumRate = (rateData) =>
+  axiosInstance.post("/admin/api/premium-rate", rateData);
+
+export const updatePremiumRate = (rateId, rateData) =>
+  axiosInstance.put(`/admin/api/premium-rate/${rateId}`, rateData);
+
+export const deletePremiumRate = (rateId) =>
+  axiosInstance.delete(`/admin/api/premium-rate/${rateId}`);

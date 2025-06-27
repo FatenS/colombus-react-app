@@ -2,10 +2,10 @@
 import {
     formatError,
     login,
-    runLogoutTimer,
-    saveTokenInLocalStorage,
     signUp,
 } from '../../services/AuthService';
+import axiosInstance from '../../services/AxiosInstance';
+
 export const NAVTOGGLE = 'NAVTOGGLE';
 
 export const navtoggle = () => {
@@ -21,15 +21,29 @@ export const LOGIN_FAILED_ACTION = '[login action] failed login';
 export const LOADING_TOGGLE_ACTION = '[Loading action] toggle loading';
 export const LOGOUT_ACTION = '[Logout action] logout action';
 
+
+export const logoutRequest = () => axiosInstance.post('/admin/logout');
+
+export function logout(navigate) {
+  return async (dispatch) => {
+    try {
+      await logoutRequest();
+    } catch (err) {
+      console.warn('Logout API failed:', err);
+    } finally {
+      dispatch({ type: LOGOUT_ACTION });
+      navigate('/login', { replace: true });
+    }
+  };
+}
+
 // Signup action
 export function signupAction(email, password, options, rating, clientName, navigate) {
     return (dispatch) => {
         signUp(email, password, options, rating, clientName)
             .then((response) => {
-                saveTokenInLocalStorage(response.data);
-                runLogoutTimer(dispatch, response.data.expiresIn * 1000, navigate);
                 dispatch(confirmedSignupAction(response.data));
-                navigate('/dashboard');
+             navigate('/login', { replace: true }); // ✅ ask the user to log in
             })
             .catch((error) => {
                 const errorMessage = formatError(error);
@@ -43,26 +57,17 @@ export function loginAction(email, password, navigate) {
     return (dispatch) => {
         login(email, password)
             .then((response) => {
-                saveTokenInLocalStorage(response.data);  // Save the access token
-                localStorage.setItem('userRoles', JSON.stringify(response.data.roles));  // Store roles in localStorage
-                dispatch(loginConfirmedAction(response.data));  // Dispatch login success
-                navigate('/dashboard');  // Redirect to dashboard on success
+                dispatch(loginConfirmedAction(response.data)); // response contains roles
+                navigate('/dashboard');
             })
             .catch((error) => {
-                const errorMessage = formatError(error);  // Format and show error
-                dispatch(loginFailedAction(errorMessage));  // Dispatch failure
+                const errorMessage = formatError(error);
+                dispatch(loginFailedAction(errorMessage));
             });
     };
 }
 
-// Logout action
-export function Logout(navigate) {
-    localStorage.removeItem('accessToken');  // Remove the token from local storage
-    navigate('/login');  // Navigate to login
-    return {
-        type: LOGOUT_ACTION,
-    };
-}
+
 
 // Helper action creators
 export function loginConfirmedAction(data) {

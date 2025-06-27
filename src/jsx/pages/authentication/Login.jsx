@@ -10,8 +10,8 @@ import { IMAGES } from "../../constant/theme";
 import logoFull from "../../../assets/images/logo-full.svg";
 
 function Login(props) {
-  const [email, setEmail] = useState(""); // Removed default values
-  const [password, setPassword] = useState(""); // Removed default values
+  const [email, setEmail] = useState(""); 
+  const [password, setPassword] = useState(""); 
   let errorsObj = { email: "", password: "" };
   const [errors, setErrors] = useState(errorsObj);
 
@@ -90,7 +90,7 @@ function Login(props) {
                         </div>
                       )}
                       {props.successMessage && (
-                        <div className="text-danger p-1 my-2">
+                        <div className="text-success p-1 my-2">
                           {props.successMessage}
                         </div>
                       )}
@@ -139,11 +139,15 @@ function Login(props) {
                         <Link className="text-primary" to="/page-register">
                           Sign Up
                         </Link>
-                      </p>
+                                              </p>
+                      
                     </div>
                   </div>
                 </div>
               </div>
+              <div className="text-end mb-3">
+  <Link to="/forgot-password" className="text-primary">Forgot password?</Link>
+</div>
             </div>
           </div>
         </div>

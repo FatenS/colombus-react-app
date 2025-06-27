@@ -1,0 +1,52 @@
+/* ════════════════════════════════════════════════════════
+   GAIN TABLE – Excel‑style blue grid
+   ════════════════════════════════════════════════════════ */
+
+   :root{
+    --tbl-blue:#003366;       /* borders + header text            */
+    --tbl-head:#e6eef9;       /* light fill for header row        */
+    --tbl-row :#ffffff;       /* white body rows                  */
+    --tbl-font:#001247;       /* numbers / body text              */
+    --tbl-note:#ce0000;       /* red foot‑note markers            */
+  
+    font-family:"Calibri",sans-serif;
+  }
+  
+  /* outer border */
+  .gains-table{
+    border:2px solid var(--tbl-blue) !important;
+    border-collapse:collapse!important;
+    font-size:0.8rem;
+    color:var(--tbl-font);
+  }
+  
+  /* every cell – 1 px blue grid */
+  .gains-table th,
+  .gains-table td{
+    border:1px solid var(--tbl-blue)!important;
+    padding:4px 6px;
+    line-height:1.25;
+  }
+  
+  /* header row styling */
+  .gains-table thead th{
+    background:var(--tbl-head);
+    color:var(--tbl-blue);
+    font-weight:700;
+    text-align:center;
+  }
+  
+  /* right‑align numbers except the first two columns */
+  .gains-table tbody td{
+    text-align:right;
+  }
+  .gains-table tbody td:nth-child(1),
+  .gains-table tbody td:nth-child(2){text-align:center;}   /* dates */
+  .gains-table tbody td:nth-child(3){text-align:left;}     /* amount € already has € */
+  
+  /* optional zebra strip */
+  .gains-table tbody tr:nth-child(even){background:#f8fbff;}
+  
+  /* red foot‑note markers (use <sup class="note">*</sup>) */
+  sup.note{color:var(--tbl-note);font-weight:700;font-size:0.75em}
+  

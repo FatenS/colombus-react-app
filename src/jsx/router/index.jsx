@@ -23,10 +23,11 @@ import Market from "./../pages/dashboard/Market";
 import LandingPage from "./../pages/dashboard/LandingPage";
 import CoinDetails from "./../pages/dashboard/CoinDetails";
 import Portofolio from "./../pages/dashboard/Portofolio";
+import ResetPassword  from "../pages/authentication/ResetPassword";
+import ForgotPassword from "../pages/authentication/ForgotPassword";
 import Login from "../pages/authentication/Login";
 import Register from "../pages/authentication/Registration";
 import EmptyPage from "./../pages/dashboard/EmptyPage";
-
 //trading
 import P2P from "../pages/trading/P2P";
 import FutureTrading from "../pages/trading/FutureTrading";
@@ -132,7 +133,7 @@ const Markup = () => {
   const allroutes = [
     { url: "market", component: <Market /> },
     { url: "coin-details", component: <CoinDetails /> },
-    { url: "portofolio", component: <Portofolio /> },
+    { url: "tca", component: <Portofolio /> },
 
     //Trading
     // { url: "trading-market", component: <TradingMarket /> },
@@ -152,7 +153,7 @@ const Markup = () => {
     { url: "user", component: <User /> },
 
     /// Apps
-    { url: "app-profile", component: <AppProfile /> },
+    { url: "app-profile", component: <EditProfile />},
     { url: "post-details", component: <PostDetails /> },
     { url: "edit-profile", component: <EditProfile /> },
     { url: "email-compose", component: <Compose /> },
@@ -164,8 +165,8 @@ const Markup = () => {
     { url: "ecom-product-list", component: <ProductList /> },
     { url: "ecom-product-detail", component: <ProductDetail /> },
     { url: "ecom-product-order", component: <ProductOrder /> },
-    { url: "ecom-checkout", component: <Checkout /> },
-    { url: "ecom-invoice", component: <Invoice /> },
+    { url: "checkout", component: <Checkout /> },
+    { url: "/invoice/:invoiceId", component: <Invoice /> },
     { url: "ecom-customers", component: <EcomCustomers /> },
 
     ///Cms
@@ -236,6 +237,8 @@ const Markup = () => {
       <Routes>
         <Route path="/" element={<LandingPage />} />
         <Route path="/login" element={<Login />} />
+        <Route path="/forgot-password" element={<ForgotPassword />} />
+        <Route path="/reset-password" element={<ResetPassword/>}/>
         <Route path="/page-register" element={<Register />} />
         <Route path="/page-lock-screen" element={<LockScreen />} />
         <Route path="/page-error-400" element={<Error400 />} />

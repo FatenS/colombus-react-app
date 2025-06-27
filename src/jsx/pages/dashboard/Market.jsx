@@ -5,6 +5,11 @@ import { Row, Col, Table, Card, Button } from "react-bootstrap";
 import Select from "react-select";
 import { Bar, Line } from "react-chartjs-2";
 import html2canvas from "html2canvas";
+import PerformanceGrid from "./PerformanceGrid.jsx";
+import "./GainsTable.css";
+import AdminTcaPage from "./AdminTcaPage";
+import { useTranslation } from "react-i18next";
+import LanguageSwitcher from "../../../switcher.jsx";
 import jsPDF from "jspdf";
 import {
   fetchSummary,
@@ -14,12 +19,12 @@ import {
 } from "../../../store/actions/DashboardActions";
 import Chart from "chart.js/auto";
 import ChartDataLabels from "chartjs-plugin-datalabels";
+import axiosInstance from "../../../services/AxiosInstance.js";
 Chart.register(ChartDataLabels);
 
 // --- Utility Functions ---/* ----------  Locale helpers (put just after your imports) ---------- */
 const LOCALE = "fr-FR";          // ASCII dash – no more RangeError!
 
-// “12 345 K TND”, “0 TND”, …
 function formatK(value) {
   const v = +value || 0;
   if (v === 0) return "0 TND";
@@ -28,6 +33,41 @@ function formatK(value) {
     " K TND"
   );
 }
+/**
+ * Nettoie une valeur monétaire et la convertit en nombre.
+ *  - accepte "123 456,78", "123 456.78", "123 456 TND", etc.
+ */
+function toNumeric(val) {
+  if (val == null) return 0;
+
+  // 1) on garde chiffres, point, virgule, signe moins
+  let cleaned = String(val).replace(/[^\d.,-]/g, "");
+
+  // 2) on enlève les espaces fines ou normales
+  cleaned = cleaned.replace(/\s/g, "");
+
+  // 3) si le séparateur décimal est une virgule → on la remplace par un point
+  const comma = cleaned.lastIndexOf(",");
+  const dot   = cleaned.lastIndexOf(".");
+  if (comma > dot) cleaned = cleaned.replace(",", ".");
+
+  return parseFloat(cleaned) || 0;
+}
+
+/**
+ * Formate un montant.
+ * @param val       valeur d'origine (string ou number)
+ * @param decimals  nb de décimales désiré
+ * @param locale    "fr-FR", "en-US"…
+ */
+function fmtMontant(val, decimals = 0, locale = "fr-FR") {
+  const n = toNumeric(val);
+  return Intl.NumberFormat(locale, {
+    minimumFractionDigits: decimals,
+    maximumFractionDigits: decimals,
+  }).format(n);
+}
+
 
 
 // Formats a number as "XYZ K TND" if >= 1000, otherwise "XYZ TND"
@@ -102,6 +142,8 @@ function hasAtLeast2Points(arr = []) {
 // --- Component ---
 
 const Market = () => {
+const { t, i18n } = useTranslation();        // ← on récupère aussi i18n
+const LOCALE = i18n.language === "en" ? "en-US" : "fr-FR";
   const dispatch = useDispatch();
   const pdfRef = useRef(null);
   const [pdfMode, setPdfMode] = useState(false);
@@ -110,6 +152,7 @@ const Market = () => {
   const { summary, forwardRate, superperformanceTrend, bankGains } = useSelector(
     (state) => state.dashboard
   );
+// right after you compute sortedArr1 / sortedArr2
 
   useEffect(() => {
     dispatch(fetchSummary(selectedCurrency.value));
@@ -118,23 +161,20 @@ const Market = () => {
     dispatch(fetchBankGains(selectedCurrency.value));
   }, [dispatch, selectedCurrency]);
 
-  useEffect(() => {
-    const token = localStorage.getItem("access_token");
-    (async () => {
-      try {
-        const res = await fetch("/get-interbank-rates", {
-          headers: { Authorization: `Bearer ${token}` }
-        });
-        if (!res.ok || !res.headers.get("content-type")?.includes("application/json")) {
-          throw new Error(`Bad response (${res.status})`);
-        }
-        const data = await res.json();
-        if (Array.isArray(data)) setInterbankRates(data);
-      } catch (err) {
-        console.error("Cannot load interbank rates:", err);
-      }
-    })();
-  }, []);
+  // ─── inter-bank daily rates ────────────────────────────────────────────
+useEffect(() => {
+  const loadInterbankRates = async () => {
+    try {
+      const { data } = await axiosInstance.get("/get-interbank-rates");
+      if (Array.isArray(data)) setInterbankRates(data);
+    } catch (err) {
+      console.error("Cannot load interbank rates:", err);
+    }
+  };
+
+  loadInterbankRates();
+}, []);
+
   
   const superperformanceTrendArray = Array.isArray(superperformanceTrend)
     ? superperformanceTrend
@@ -151,6 +191,7 @@ const Market = () => {
   // To keep the triangle marker at a consistent position, we use the same values as the bar.
   // (The label will show the actual gain.)
   const gainData = sortedArr1;
+  const grossGainMtd = sortedArr2.at(-1) ?? 0;   // 4 K for May
 
   // --- Bar Chart Options ---
   /* ------------------------------------------------------------------ */
@@ -188,7 +229,7 @@ const optionsBar = {
 
   plugins: {
     legend: {
-      position: 'top',
+      position: 'bottom',
       align: 'center',
       labels: {
         usePointStyle: true,
@@ -223,9 +264,9 @@ const optionsBar = {
 
     datalabels: {
       display: (ctx) => ctx.dataset.label === "Gain en TND",
-      anchor: "end",
-      align: "end",
-      offset:0,
+      anchor: "start",
+      align: "start",
+      offset:-36,
       backgroundColor: "#d9d9d9",
       borderRadius: 4,
       padding: { left: 4, right: 4, top: 1, bottom: 2 },
@@ -241,6 +282,11 @@ const optionsBar = {
   }
 };
 
+/* ------------- helpers for Excel‑style triangles ------------------ */
+const TRIANGLE_BLUE = "#9ab3d2";                // lighter blue
+const triangleData = sortedArr1.map(v => v * 1.12);      // +12 %
+
+/* ------------------------------------------------------------------ */
 
 /* ------------------------------------------------------------------ */
 /* 2)  BAR CHART DATA  – replace monthlyBarChartData                  */
@@ -249,7 +295,7 @@ const monthlyBarChartData = {
   labels: sortedMonths,          // keep your month list
   datasets: [
     {
-      label: "Montant en TND",
+      label: t('lblAmountTnd'),
       data: sortedArr1,
       backgroundColor: "#00194d",   // darker navy
       borderColor: "#00194d",
@@ -258,10 +304,10 @@ const monthlyBarChartData = {
       order: 1
     },
     {
-      label: "Gain en TND",
-      data: gainData,               // same y‑value as bar so the triangle sits on top
-      borderColor: "#315f82",
-      backgroundColor: "#315f82",
+      label: t('lblGainTnd'),
+      data: triangleData,               // same y‑value as bar so the triangle sits on top
+      borderColor: TRIANGLE_BLUE,
+      backgroundColor: TRIANGLE_BLUE,
       type: "line",
       fill: false,
       showLine: false,
@@ -329,34 +375,56 @@ const monthlyBarChartData = {
   const superExecImport = uniqueDataset(superperformanceTrendArray, "execution_rate_import");
   const superInterbank = uniqueDataset(superperformanceTrendArray, "interbank_rate");
 
-  const optionsLineSuperExport = {
-    ...optionsLine,
-    scales: {
-      ...optionsLine.scales,
-      y: { 
-        ...optionsLine.scales.y, 
-        min: Math.min(...superExecExport.map(i => i.y), ...superInterbank.map(i => i.y)) * 0.98,
-        max: Math.max(...superExecExport.map(i => i.y), ...superInterbank.map(i => i.y)) * 1.02,
-      },
-    },
-  };
+  // ---------- tighten the Y range so the two curves separate ----------
+const PAD          = 0.003;                                       // 0.3 ‰
+const allExpValues = [...superExecExport, ...superInterbank].map(d => d.y);
+const yMinExport   = Math.min(...allExpValues) - PAD;
+const yMaxExport   = Math.max(...allExpValues) + PAD;
 
-  const optionsLineSuperImport = {
-    ...optionsLine,
-    scales: {
-      ...optionsLine.scales,
-      y: { 
-        ...optionsLine.scales.y, 
-        min: Math.min(...superExecImport.map(i => i.y), ...superInterbank.map(i => i.y)) * 0.98,
-        max: Math.max(...superExecImport.map(i => i.y), ...superInterbank.map(i => i.y)) * 1.02,
-      },
-    },
-  };
+const allImpValues = [...superExecImport, ...superInterbank].map(d => d.y);
+const yMinImport   = Math.min(...allImpValues) - PAD;
+const yMaxImport   = Math.max(...allImpValues) + PAD;
+// --------------------------------------------------------------------
+
+// --- min / max helpers for separate scaling (export & import)
+const minExecExp = Math.min(...superExecExport.map(d => d.y));
+const maxExecExp = Math.max(...superExecExport.map(d => d.y));
+const minIBExp   = Math.min(...superInterbank.map(d => d.y));
+const maxIBExp   = Math.max(...superInterbank.map(d => d.y));
+
+const minExecImp = Math.min(...superExecImport.map(d => d.y));
+const maxExecImp = Math.max(...superExecImport.map(d => d.y));
+
+const optionsLineSuperExport = {
+  ...optionsLine,
+  scales: {
+    x: optionsLine.scales.x,          // keep the existing X axis
+    y: {
+      beginAtZero : false,
+      min         : yMinExport,
+      max         : yMaxExport,
+      ticks       : { color: "#001247", stepSize: 0.01 }   // stepSize optional
+    }
+  }
+};
+
+const optionsLineSuperImport = {
+  ...optionsLine,
+  scales: {
+    x: optionsLine.scales.x,
+    y: {
+      beginAtZero : false,
+      min         : yMinImport,
+      max         : yMaxImport,
+      ticks       : { color: "#001247", stepSize: 0.01 }
+    }
+  }
+};
 
   const superperformanceExportChartData = {
     datasets: [
       {
-        label: "Taux d'exécution export",
+        label: t('lblExecExport'),
         data: superExecExport,
         borderColor: "#007bff",
         borderWidth: 2,
@@ -367,7 +435,7 @@ const monthlyBarChartData = {
         pointHoverRadius: superExecExport.length > 0 && superInterbank.length <= 2 ? 5 : 0,
       },
       {
-        label: "Taux interbancaire",
+        label: t('lblInterbank'),
         data: superInterbank,
         borderColor: "#ff7f50",
         borderWidth: 2,
@@ -384,7 +452,7 @@ const monthlyBarChartData = {
   const superperformanceImportChartData = {
     datasets: [
       {
-        label: "Taux d'exécution import",
+        label: t('lblExecImport'),
         data: superExecImport,
         borderColor: "#28a745",
         borderWidth: 2,
@@ -395,7 +463,7 @@ const monthlyBarChartData = {
         pointHoverRadius: superExecImport.length > 0 && superInterbank.length <= 2 ? 5 : 0,
       },
       {
-        label: "Taux interbancaire",
+        label: t('lblInterbank'),
         data: superInterbank,
         borderColor: "#ff7f50",
         borderWidth: 2,
@@ -417,7 +485,7 @@ const monthlyBarChartData = {
   const forwardRateExportChartData = {
     datasets: [
       {
-        label: "Secured Forward Rate - Export",
+        label: t('lblSecForwardExport'),
         data: securedExportData,
         borderColor: "#007bff",
         borderWidth: 2,
@@ -550,13 +618,15 @@ const monthlyBarChartData = {
   // const displayedBankGains = pdfMode
   //   ? bankGains.filter((item) => item.month === currentYearMonth)
   //   : bankGains;
-  const displayedBankGains = bankGains.filter((row) => {
-    const dateStr = row["Date Transaction"];
-    const parts = dateStr?.split("/");
-    return parts?.[2] === "2025";
-  });
+
+  // const displayedBankGains = bankGains.filter((row) => {
+  //   const dateStr = row["Date Transaction"];
+  //   const parts = dateStr?.split("/");
+  //   return parts?.[2] === "2025";
+  // });
   
-  
+  const displayedBankGains = bankGains;
+
   const showExportChart = hasExportOrders && superExecExport.length > 0;
   const showImportChart = hasImportOrders && superExecImport.length > 0;
   const showForwardExportChart =
@@ -581,20 +651,38 @@ const monthlyBarChartData = {
     pdf.save(`Dashboard_${new Date().toISOString().slice(0, 10)}.pdf`);
     setPdfMode(false);
   };
-
+  function formatPositiveNumber(val, isPercent = false) {
+    if (!val) return "";
+  
+    // Remove non-numeric characters except for comma, dot and minus
+    let cleaned = val
+      .toString()
+      .replace(/[^\d,.\-]/g, "")   // Remove units like 'TND', thin spaces, etc.
+      .replace(",", ".");          // Convert comma to dot for decimal
+  
+    let num = Number(cleaned);
+    if (isNaN(num)) return "";
+  
+    return isPercent
+      ? `${Math.abs(num).toFixed(2)}%`
+      : Math.abs(num).toFixed(2);
+  }
+  
   return (
     <>
       <div className="text-end me-3 mt-2">
         <Button variant="primary" onClick={handleDownloadPdf}>
-          Télécharger PDF
+          {t("downloadPdf")}   {/* exact même nom que dans i18n.js */}
+
         </Button>
       </div>
+      <LanguageSwitcher />
       <div ref={pdfRef} className={pdfMode ? "" : "container-fluid"} style={pdfContainerStyle}>
         <div className="pdf-page" style={pdfPageStyle}>
           <Row className="mb-2" style={{ margin: 0 }}>
             <Col md={12}>
               <h3 className="text-center" style={{ fontWeight: 600, color: "#001247" }}>
-                Résumé des gains sur transaction
+                 {t("titleReport")}
               </h3>
             </Col>
           </Row>
@@ -635,134 +723,26 @@ const monthlyBarChartData = {
           )}
           <Row className="mb-2 align-items-stretch">
           <Col md={6} className="mb-2">
-  <Card className="h-100" style={{ border: "1px solid #ccc", padding: "10px" }}>
-    <h5 style={{ color: "#001247", fontWeight: 700, marginBottom: "14px", fontSize: "1.2rem" }}>
-      Résumé des performances
-    </h5>
+  <Card className="pb-wrapper">
+    <Card.Body style={{ padding: 0 }}>
    
-    {/* Row 1: Total traded FX and TND volumes */}
-    <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "10px" }}>
-      <div style={{ width: "50%" }}>
-        <p style={{ fontSize: "1rem", fontWeight: 600, color: "#003366", marginBottom: 4 }}>
-          Total des transactions ({selectedCurrency.value})
-        </p>
-        <p style={{ fontSize: "1rem", fontWeight: 700, color: "#001247" }}>
-          {Math.round(summary.total_traded_fx || 0).toLocaleString("fr-FR")}
-          <span style={{ fontSize: "0.8rem", marginLeft: 6, color: "#808080" }}>
-            {selectedCurrency.value}
-          </span>
-        </p>
-      </div>
-
-      <div style={{ width: "50%", textAlign: "right" }}>
-        <p style={{ fontSize: "1rem", fontWeight: 600, color: "#003366", marginBottom: 4 }}>
-          Total des transactions (TND)
-        </p>
-        <p style={{ fontSize: "1rem", fontWeight: 700, color: "#001247" }}>
-          {Math.round(summary.total_traded_tnd || 0).toLocaleString("fr-FR")}
-          <span style={{ fontSize: "0.8rem", marginLeft: 6, color: "#808080" }}>TND</span>
-        </p>
-      </div>
-    </div>
-
-    <hr style={{ borderTop: "1px solid #808080", margin: "8px 0" }} />
-
-    {/* Row 2: MTD traded FX and TND volumes */}
-    <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "10px" }}>
-      <div style={{ width: "50%" }}>
-        <p style={{ fontSize: "1rem", fontWeight: 600, color: "#003366", marginBottom: 4 }}>
-          Transactions MTD ({selectedCurrency.value})
-        </p>
-        <p style={{ fontSize: "1rem", fontWeight: 700, color: "#001247" }}>
-          {Math.round(summary.total_traded_mtd_fx || 0).toLocaleString("fr-FR")}
-          <span style={{ fontSize: "0.8rem", marginLeft: 6, color: "#808080" }}>
-            {selectedCurrency.value}
-          </span>
-        </p>
-      </div>
-
-      <div style={{ width: "50%", textAlign: "right" }}>
-        <p style={{ fontSize: "1rem", fontWeight: 600, color: "#003366", marginBottom: 4 }}>
-          Transactions MTD (TND)
-        </p>
-        <p style={{ fontSize: "1rem", fontWeight: 700, color: "#001247" }}>
-          {Math.round(summary.total_traded_mtd_tnd || 0).toLocaleString("fr-FR")}
-          <span style={{ fontSize: "0.8rem", marginLeft: 6, color: "#808080" }}>TND</span>
-        </p>
-      </div>
-    </div>
-
-    <hr style={{ borderTop: "1px solid #808080", margin: "8px 0" }} />
-
-    {/* Row 3: Cumulative Economies FX and TND */}
-    <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "10px" }}>
-      <div style={{ width: "50%" }}>
-        <p style={{ fontSize: "1rem", fontWeight: 600, color: "#003366", marginBottom: 4 }}>
-          Économies Totales ({selectedCurrency.value})
-        </p>
-        <p style={{ fontSize: "1rem", fontWeight: 700, color: "#001247" }}>
-          {Math.round(summary.economies_totales_fx || 0).toLocaleString("fr-FR")}
-          <span style={{ fontSize: "0.8rem", marginLeft: 6, color: "#808080" }}>
-            {selectedCurrency.value}
-          </span>
-        </p>
-      </div>
-
-      <div style={{ width: "50%", textAlign: "right" }}>
-        <p style={{ fontSize: "1rem", fontWeight: 600, color: "#003366", marginBottom: 4 }}>
-          Économies Totales (TND)
-        </p>
-        <p style={{ fontSize: "1rem", fontWeight: 700, color: "#001247" }}>
-          {Math.round(summary.economies_totales_tnd || 0).toLocaleString("fr-FR")}
-          <span style={{ fontSize: "0.8rem", marginLeft: 6, color: "#808080" }}>TND</span>
-        </p>
-      </div>
-    </div>
-
-    <hr style={{ borderTop: "1px solid #808080", margin: "8px 0" }} />
-
-    {/* Row 4: Commission, Net Gain, ROI */}
-    <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "10px" }}>
-      <div style={{ width: "33%" }}>
-        <p style={{ fontSize: "1rem", fontWeight: 600, color: "#003366", marginBottom: 4 }}>
-          Commission
-        </p>
-        <p style={{ fontSize: "1rem", fontWeight: 700, color: "#001247" }}>
-          {Math.round(summary.total_commissions_tnd || 0).toLocaleString("fr-FR")}
-          <span style={{ fontSize: "0.8rem", marginLeft: 6, color: "#808080" }}>TND</span>
-        </p>
-      </div>
-      <div style={{ width: "33%" }}>
-        <p style={{ fontSize: "1rem", fontWeight: 600, color: "#003366", marginBottom: 4 }}>
-          Gain net après commissions
-        </p>
-        <p style={{ fontSize: "1rem", fontWeight: 700, color: "#001247" }}>
-          {Math.round(summary.net_gain_tnd || 0).toLocaleString("fr-FR")}
-          <span style={{ fontSize: "0.8rem", marginLeft: 6, color: "#808080" }}>TND</span>
-        </p>
-      </div>
-      <div style={{ width: "33%", textAlign: "right" }}>
-        <p style={{ fontSize: "1rem", fontWeight: 600, color: "#003366", marginBottom: 4 }}>
-          ROI ***
-        </p>
-        <p style={{ fontSize: "1rem", fontWeight: 700, color: "#001247" }}>
-          {summary.roi_percent != null
-            ? summary.roi_percent.toFixed(0) + " %"
-            : "-- %"}
-        </p>
-      </div>
-    </div>
+<PerformanceGrid
+   s={{ ...summary, gross_gain_mtd: grossGainMtd }}  // ← inject one extra field
+   currency={selectedCurrency.value}
+   pdf={pdfMode}
+ />
 
 
-  
+    </Card.Body>
   </Card>
 </Col>
 
+
             <Col md={6} className="mb-2">
-              <Card className="shadow-sm h-100" style={{ border: "1px solid #ccc" }}>
+              <Card className="shadow-sm" style={{ border: "1px solid #ccc" }}>
                 <Card.Body className="d-flex flex-column align-items-center justify-content-center p-2">
                   <Card.Title className="text-center" style={{ fontSize: "1rem", fontWeight: 500, color: "#001247", textTransform: "none", margin: "5px" }}>
-                    Total transigé & gain total par mois
+                  {t("totalTradedGain")}
                   </Card.Title>
                   <div style={{ height: "300px", width: "100%" }}>
                     <Bar data={monthlyBarChartData} options={optionsBar} />
@@ -770,20 +750,21 @@ const monthlyBarChartData = {
                 </Card.Body>
               </Card>
             </Col>
-            <p style={{ fontSize: "0.9rem", fontFamily: "Calibri, sans-serif", fontWeight: "bold", fontStyle: "italic" }}>
-              ** Le gain est calculé sur la base de votre performance historique, telle que déterminée dans le TCA que nous avons préparé. Ce calcul repose sur l'historique de vos transactions que vous nous avez fournies, comparé à la moyenne des taux observés sur le marché.
+            <p style={{ fontSize: "0.9rem",color:"#003366", fontFamily: "Calibri, sans-serif", fontWeight: "bold", fontStyle: "italic" }}>
+            {t("gainFootnote")}
+
               <br />
             </p>
           </Row>
           {(hasExportOrders || hasImportOrders) && (
             <Row className="mb-2" style={{ padding: "10px" }}>
-              {hasExportOrders && (
+              {showExportChart && (
                 <Col md={showExportChart && !showImportChart ? 12 : 6} className="mb-2">
 
                   <Card className="shadow-sm" style={{ border: "1px solid #ccc" }}>
                     <Card.Body>
                       <Card.Title className="text-center" style={{ fontSize: "1rem", fontWeight: 500, color: "#001247", textTransform: "none", margin: "5px" }}>
-                        Superperformance (export) : taux d'exécution export vs taux interbancaire
+                      {t("exportSuper")}
                       </Card.Title>
                       <div style={{ height: chartHeight }}>
                         <Line data={superperformanceExportChartData} options={optionsLineSuperExport} />
@@ -792,12 +773,13 @@ const monthlyBarChartData = {
                   </Card>
                 </Col>
               )}
-              {hasImportOrders && (
-                <Col md={6} className="mb-2">
+              { showImportChart && (
+                <Col md={ showImportChart && ! showExportChart? 12 : 6} className="mb-2">
+                
                   <Card className="shadow-sm" style={{ border: "1px solid #ccc" }}>
                     <Card.Body>
                       <Card.Title className="text-center" style={{ fontSize: "1rem", fontWeight: 500, color: "#001247", textTransform: "none", margin: "5px" }}>
-                        Superperformance (import) : taux d'exécution import vs taux interbancaire
+                        {t("importSuper")}
                       </Card.Title>
                       <div style={{ height: chartHeight }}>
                         <Line data={superperformanceImportChartData} options={optionsLineSuperImport} />
@@ -812,11 +794,11 @@ const monthlyBarChartData = {
         <div className="pdf-page" style={pdfPageStyle}>
           <Row className="mb-2">
           {showForwardExportChart && (
-    <Col md={showForwardExportChart && !showForwardImportChart ? 12 : 6} className="mb-2">
+          <Col md={showForwardExportChart && !showForwardImportChart ? 12 : 6} className="mb-2">
                 <Card className="shadow-sm" style={{ border: "1px solid #ccc" }}>
                   <Card.Body>
                     <Card.Title className="text-center" style={{ fontSize: "1rem", fontWeight: 500, color: "#001247", textTransform: "none", margin: "5px" }}>
-                      Taux à terme (export) : secured vs market
+                                          {t("forwardExport")}
                     </Card.Title>
                     <div style={{ height: chartHeight }}>
                       <Line data={forwardRateExportChartData} options={optionsLineForwardExport} />
@@ -825,12 +807,12 @@ const monthlyBarChartData = {
                 </Card>
               </Col>
             )}
-            {hasImportOrders && (
-              <Col md={6} className="mb-2">
+            {showForwardImportChart && ( 
+              <Col md={showForwardImportChart && !showForwardExportChart ? 12 : 6} className="mb-2">
                 <Card className="shadow-sm" style={{ border: "1px solid #ccc" }}>
                   <Card.Body>
                     <Card.Title className="text-center" style={{ fontSize: "1rem", fontWeight: 500, color: "#001247", textTransform: "none", margin: "5px" }}>
-                      Taux à terme (import) : secured vs market
+                    {t("forwardImport")}
                     </Card.Title>
                     <div style={{ height: chartHeight }}>
                       <Line data={forwardRateImportChartData} options={optionsLineForwardImport} />
@@ -839,22 +821,24 @@ const monthlyBarChartData = {
                 </Card>
               </Col>
             )}
-            {/* <p style={{ fontSize: "0.9rem", fontFamily: "Calibri, sans-serif", fontWeight: "bold", fontStyle: "italic" }}>
+            <p style={{ fontSize: "0.9rem", fontFamily: "Calibri, sans-serif", fontWeight: "bold", fontStyle: "italic" , color: "#003366"}}>
               ** Il est important de souligner que le marché interbancaire est exclusivement destiné aux banques. Toutefois, les taux que nous avons négociés pour les imports ont, dans{" "}
               {summary.superformance_rate !== undefined ? summary.superformance_rate.toFixed(0) : "72"}
               % des cas, surpassé le taux interbancaire.
-            </p> */}
+            </p>
+      
+          
           </Row>
           <Row>
             <Col>
               <Card className="shadow-sm" style={{ border: "1px solid #ccc" }}>
                 <Card.Body>
                   <Card.Title className="text-center" style={{ fontSize: "1rem", fontWeight: 500, color: "#001247", textTransform: "none", margin: "5px" }}>
-                    Tableau des gains 
-                  
+                    {t("gainsTable")}
                   </Card.Title>
                   <div style={{ maxHeight: pdfMode ? "none" : "300px", overflowY: pdfMode ? "visible" : "auto" }}>
-                  <Table
+                  <Table    className="gains-table"
+
   striped
   bordered
   hover
@@ -865,33 +849,49 @@ const monthlyBarChartData = {
 >
   <thead>
     <tr style={{ color: "#001247" }}>
-      <th style={{ padding: "4px 6px", lineHeight: "1.1" }}>Date Transaction</th>
-      <th style={{ padding: "4px 6px", lineHeight: "1.1" }}>Date Valeur</th>
-      <th style={{ padding: "4px 6px", lineHeight: "1.1" }}>Montant (€)</th>
-      <th style={{ padding: "4px 6px", lineHeight: "1.1" }}>Banque</th>
-      <th style={{ padding: "4px 6px", lineHeight: "1.1" }}>Taux de référence *  </th>
-      <th style={{ padding: "4px 6px", lineHeight: "1.1" }}>Gain (TND)</th>
-      <th style={{ padding: "4px 6px", lineHeight: "1.1" }}>% Gain</th>
-      <th style={{ padding: "4px 6px", lineHeight: "1.1" }}>Commission (TND)</th>
-      <th style={{ padding: "4px 6px", lineHeight: "1.1" }}>Commission / Gain</th>
+      <th style={{ padding: "4px 6px", lineHeight: "1.1" }}>{t("thDateTx")}</th>
+      <th style={{ padding: "4px 6px", lineHeight: "1.1" }}>{t("thDateVal")}</th>
+      <th style={{ padding: "4px 6px", lineHeight: "1.1" }}>{t("thDevise")}</th>
+      <th style={{ padding: "4px 6px", lineHeight: "1.1" }}>{t("thType")}</th>
+      <th style={{ padding: "4px 6px", lineHeight: "1.1" }}>{t("thTypeOp")}</th>
+      <th style={{ padding: "4px 6px", lineHeight: "1.1" }}>{t("thAmount")}</th>
+      <th style={{ padding: "4px 6px", lineHeight: "1.1" }}>{t("thBank")}</th>
+      <th style={{ padding: "4px 6px", lineHeight: "1.1" }}>{t("thRefRate")}</th>
+      <th style={{ padding: "4px 6px", lineHeight: "1.1" }}>{t("thExecRate")} </th>
+      <th style={{ padding: "4px 6px", lineHeight: "1.1" }}>{t("thGain")}</th>
+      <th style={{ padding: "4px 6px", lineHeight: "1.1" }}>{t("thPctGain")}</th>
+      <th style={{ padding: "4px 6px", lineHeight: "1.1" }}>{t("thCommission")}</th>
+      <th style={{ padding: "4px 6px", lineHeight: "1.1" }}>{t("thCommGain")}</th>
     </tr>
   </thead>
   <tbody>
+    
     {displayedBankGains.length ? (
       displayedBankGains.map((row, i) => (
         <tr key={i}>
           <td style={{ padding: "4px 6px", lineHeight: "1.2" }}>{row["Date Transaction"]}</td>
           <td style={{ padding: "4px 6px", lineHeight: "1.2" }}>{row["Date Valeur"]}</td>
-          <td style={{ padding: "4px 6px", lineHeight: "1.2" }}>{row["Montant"]}</td>
+          <td style={{ padding: "4px 6px", lineHeight: "1.2" }}>{row["Devise"]}</td>
+          <td style={{ padding: "4px 6px", lineHeight: "1.2" }}>{row["Type"]}</td>
+          <td style={{ padding: "4px 6px", lineHeight: "1.2" }}>{row["Type d’opération"]}</td>
+          <td style={{ padding: "4px 6px", lineHeight: "1.2" }}> {fmtMontant(row["Montant"], 0, LOCALE)}</td>
           <td style={{ padding: "4px 6px", lineHeight: "1.2" }}>{row.Banque}</td>
           <td style={{ padding: "4px 6px", lineHeight: "1.2" }}>{row["Taux de référence *"]}</td>
-          <td style={{ padding: "4px 6px", lineHeight: "1.2" }}>{row["Gain**"]}</td>
-          <td style={{ padding: "4px 6px", lineHeight: "1.2" }}>{row["% Gain"]}</td>
-          <td style={{ padding: "4px 6px", lineHeight: "1.2" }}>{row["Commission CC ***"]}</td>
+          <td style={{ padding: "4px 6px", lineHeight: "1.2" }}>{row["Taux d’exécution"]}</td>
           <td style={{ padding: "4px 6px", lineHeight: "1.2" }}>
-  {!isNaN(parseFloat(row["Commission % de gain"]))
-    ? `${(parseFloat(row["Commission % de gain"]) * 100).toFixed(0)}%`
-    : "--"}
+          {fmtMontant( formatPositiveNumber(row["Gain**"]), 0, LOCALE)} 
+</td>
+<td style={{ padding: "4px 6px", lineHeight: "1.2" }}>
+  {formatPositiveNumber(row["% Gain"], true)}
+
+</td>
+
+          <td style={{ padding: "4px 6px", lineHeight: "1.2" }}>            {fmtMontant( formatPositiveNumber(row["Commission CC ***"]), 0, LOCALE)} 
+         </td>
+          <td style={{ padding: "4px 6px", lineHeight: "1.2" }}>{row["Commission % de gain"]}
+  {/* {!isNaN(parseFloat(row["Commission % de gain"]))
+    ? `${(parseFloat(row["Commission % de gain"]))}%`
+    : "--"} */}
 </td>
 
         </tr>
@@ -899,7 +899,7 @@ const monthlyBarChartData = {
     ) : (
       <tr>
         <td colSpan={8} className="text-center" style={{ padding: "6px", color: "#001247" }}>
-          Pas de données disponibles
+           {t("noData")}
         </td>
       </tr>
     )}
@@ -910,13 +910,13 @@ const monthlyBarChartData = {
               </Card>
             </Col>
           </Row>
-          <p style={{ fontSize: "0.9rem", fontFamily: "Calibri, sans-serif", fontWeight: "bold", fontStyle: "italic" }}>
-**Le gain est calculé sur la base de votre performance historique, telle que déterminée dans le TCA que nous avons préparé. Ce calcul repose sur l'historique de vos transactions que vous nous avez fournies, comparé à la moyenne des taux observés sur le marché.				<br />									
-														
- *** La commission versée à Columbus Capital est considérée comme un investissement dans le service. C'est pourquoi nous pouvons calculer votre ROI (Return on Investment) afin d’évaluer la rentabilité de cet engagement.													
+          <p style={{ fontSize: "0.9rem", fontFamily: "Calibri, sans-serif", fontWeight: "bold", fontStyle: "italic" , color: "#003366"}}>
 
+  <br />
+  {t("commissionFootnote")}
             </p>
         </div>
+        <AdminTcaPage/>
 
       </div>
     </>

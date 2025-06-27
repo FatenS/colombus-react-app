@@ -2,11 +2,11 @@
 import { createSelector } from 'reselect';
 
 const selectAuth = (state) => state.auth.auth;
-
 export const isAuthenticated = createSelector(
     [selectAuth],
-    (auth) => !!auth.access_token
+    (auth) => !!auth.email
 );
+
 
 export const hasRole = (role) => createSelector(
     [selectAuth],

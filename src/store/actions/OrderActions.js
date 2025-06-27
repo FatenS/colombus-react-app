@@ -11,6 +11,7 @@ import {
     updateOrderClient,fetchPremiumRates,createPremiumRate ,updatePremiumRate,deletePremiumRate
 
 } from '../../services/OrderService';
+import axiosInstance from '../../services/AxiosInstance';  
 
 // Action types
 export const FETCH_ORDERS_SUCCESS = 'FETCH_ORDERS_SUCCESS';
@@ -199,5 +200,16 @@ export const updateOrderClientAction = (orderId, updatedData) => async (dispatch
     }
 };
 
-
+// store/actions/OrderActions.js
+export const uploadOrderAction = (formData) => async (dispatch) => {
+    try {
+      await axiosInstance.post("/admin/upload-orders", formData, {
+        headers: { "Content-Type": "multipart/form-data" },
+      });
+      // optionally dispatch({ type: ORDERS_REFRESH }) …
+    } catch (err) {
+      throw err;          // let the caller show the Swal
+    }
+  };
+  
 

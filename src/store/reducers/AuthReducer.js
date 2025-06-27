@@ -11,11 +11,7 @@ import {
 const initialState = {
     auth: {
         email: '',
-        idToken: '',
-        localId: '',
-        expiresIn: '',
-        refreshToken: '',
-        roles: [],  // Add roles to the initial state
+        roles: [],  
     },
     errorMessage: '',
     successMessage: '',
@@ -57,10 +53,6 @@ export function AuthReducer(state = initialState, action) {
                 successMessage: '',
                 auth: {
                     email: '',
-                    idToken: '',
-                    localId: '',
-                    expiresIn: '',
-                    refreshToken: '',
                     roles: [],  // Clear roles on logout
                 },
             };

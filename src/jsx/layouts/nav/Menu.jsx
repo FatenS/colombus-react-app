@@ -1,3 +1,11 @@
+const stripByRole = (items, isAdmin) =>
+  items
+    .filter((it) => !it.adminOnly || isAdmin)
+    .map((it) =>
+      it.content ? { ...it, content: stripByRole(it.content, isAdmin) } : it
+    )
+    .filter((it) => it.to || (it.content && it.content.length));
+
 export const MenuList = [
   //Dashboard
   {
@@ -21,10 +29,10 @@ export const MenuList = [
       //   title: "Coin Details",
       //   to: "coin-details",
       // },
-      // {
-      //   title: "Portofolio",
-      //   to: "portofolio",
-      // },
+      {
+        title: "TCA",
+        to: "tca",
+      },
     ],
   },
 
@@ -118,6 +126,7 @@ export const MenuList = [
       // },
       {
         title: "Email",
+        adminOnly: true,
         hasMenu: true,
         content: [
           // {
@@ -159,13 +168,13 @@ export const MenuList = [
           //   title: "Order",
           //   to: "ecom-product-order",
           // },
-          // {
-          //   title: "Checkout",
-          //   to: "ecom-checkout",
-          // },
+          {
+            title: "Invoices",
+            to: "checkout",
+          },
           // {
           //   title: "Invoice",
-          //   to: "ecom-invoice",
+          //   to: "/invoice/:invoiceId",
           // },
           // {
           //   title: "Customers",
@@ -456,3 +465,4 @@ export const MenuList = [
   //   ],
   // },
 ];
+export const buildMenu = (isAdmin) => stripByRole(MenuList, isAdmin); 

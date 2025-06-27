@@ -1,0 +1,30 @@
+/* TCAReportPrint.css */
+@page {
+    size: A4 landscape;
+    margin: 10mm;
+  }
+  .report-page {
+    /* A4 landscape in mm -> convert to px at 96dpi: 1mm ≈ 3.78px */
+    width: 1123px;   /* 297mm * 3.78 */
+    height: 794px;   /* 210mm * 3.78 */
+    padding: 20px;
+    box-sizing: border-box;
+    background: #fff;
+    /* ensure it's centered if you preview it in-browser */
+    margin: 0 auto;
+  }
+  .report-section {
+    page-break-inside: avoid;
+    margin-bottom: 16px;
+  }
+  .two-column {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    column-gap: 20px;
+  }
+  .header-flex {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  

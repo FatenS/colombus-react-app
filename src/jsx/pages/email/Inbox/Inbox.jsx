@@ -1,54 +1,39 @@
+// src/jsx/pages/email/Inbox.jsx            ← adjust the path to your tree
 import React, { useEffect, useState, Fragment } from "react";
-import { Link } from "react-router-dom";
-import { 
-  Container, 
-  Row, 
-  Col, 
-  Card, 
-  ListGroup, 
-  Button, 
-  Dropdown 
-} from "react-bootstrap";
+import { Container, Row, Col, Card, ListGroup, Button } from "react-bootstrap";
+import axiosInstance from "../../../../services/AxiosInstance";   // ← NEW
 
-const Inbox = () => {
-  // Default to a valid email type ("confirmation" or "interbank")
-  const [emails, setEmails] = useState([]);
+export default function Inbox() {
+  /* ------------------------------------------------------------- */
+  /*                       LOCAL  STATE                            */
+  /* ------------------------------------------------------------- */
+  const [emails,        setEmails]        = useState([]);
   const [selectedEmail, setSelectedEmail] = useState(null);
-  const [activeTab, setActiveTab] = useState("confirmation");
+  const [activeTab,     setActiveTab]     = useState("confirmation"); // "confirmation" | "interbank"
 
+  /* ------------------------------------------------------------- */
+  /*                    FETCH  EMAILS  (on tab change)             */
+  /* ------------------------------------------------------------- */
   useEffect(() => {
+    const fetchEmails = async () => {
+      try {
+        const { data } = await axiosInstance.get(
+          "/admin/api/internal-emails",
+          { params: { type: activeTab } }
+        );
+        setEmails(Array.isArray(data) ? data : []);
+      } catch (err) {
+        console.error("Error fetching emails:", err);
+        setEmails([]);
+      }
+    };
+
     fetchEmails();
   }, [activeTab]);
 
-  const fetchEmails = async () => {
-    const token = localStorage.getItem("accessToken");
-    if (!token) {
-      console.error("No token found. Please login.");
-      return;
-    }
-    try {
-      // Use the full URL with /admin prefix and valid email type in the query
-      const response = await fetch(
-        `http://localhost:5001/admin/api/internal-emails?type=${activeTab}`,
-        {
-          headers: {
-            "Content-Type": "application/json",
-            "Authorization": `Bearer ${token}`
-          }
-        }
-      );
-      const data = await response.json();
-      if (Array.isArray(data)) {
-        setEmails(data);
-      } else {
-        console.error("Expected an array but got:", data);
-        setEmails([]);
-      }
-    } catch (error) {
-      console.error("Error fetching emails:", error);
-    }
-  };
-
+  /* ============================================================= */
+  /*                           RENDER                              */
+  /* ============================================================= */
   return (
     <Fragment>
       <Container className="my-4">
@@ -57,31 +42,33 @@ const Inbox = () => {
             <Card className="shadow-sm">
               <Card.Body>
                 <Row>
-                  {/* Sidebar */}
+                  {/* ────────────  SIDEBAR  ──────────── */}
                   <Col md={4} className="border-end">
-                    {/* <div className="mb-4 text-center">
-                      <Link to="/email-compose" className="btn btn-primary">
-                        Compose
-                      </Link>
-                    </div> */}
                     <ListGroup variant="flush">
-                      <ListGroup.Item 
-                        action 
-                        active={activeTab === "confirmation"} 
-                        onClick={() => setActiveTab("confirmation")}
+                      <ListGroup.Item
+                        action
+                        active={activeTab === "confirmation"}
+                        onClick={() => {
+                          setSelectedEmail(null);
+                          setActiveTab("confirmation");
+                        }}
                       >
-                        <i className="fa fa-inbox me-2"></i>
+                        <i className="fa fa-inbox me-2" />
                         Confirmation
                         <span className="badge bg-danger float-end">
                           {activeTab === "confirmation" ? emails.length : "-"}
                         </span>
                       </ListGroup.Item>
-                      <ListGroup.Item 
-                        action 
-                        active={activeTab === "interbank"} 
-                        onClick={() => setActiveTab("interbank")}
+
+                      <ListGroup.Item
+                        action
+                        active={activeTab === "interbank"}
+                        onClick={() => {
+                          setSelectedEmail(null);
+                          setActiveTab("interbank");
+                        }}
                       >
-                        <i className="fa fa-bank me-2"></i>
+                        <i className="fa fa-bank me-2" />
                         Interbank
                         <span className="badge bg-info float-end">
                           {activeTab === "interbank" ? emails.length : "-"}
@@ -90,58 +77,50 @@ const Inbox = () => {
                     </ListGroup>
                   </Col>
 
-                  {/* Main Content */}
+                  {/* ────────────  MAIN  PANE  ──────────── */}
                   <Col md={8}>
+                    {/* Single-email view */}
                     {selectedEmail ? (
                       <Card className="mb-3">
                         <Card.Header as="h5">{selectedEmail.subject}</Card.Header>
                         <Card.Body>
-                          <p>
-                            <strong>From:</strong> {selectedEmail.sender}
-                          </p>
-                          <p>
-                            <strong>To:</strong> {selectedEmail.recipient}
-                          </p>
+                          <p><strong>From:</strong> {selectedEmail.sender}</p>
+                          <p><strong>To:</strong> {selectedEmail.recipient}</p>
                           {selectedEmail.cc && (
-                            <p>
-                              <strong>CC:</strong> {selectedEmail.cc}
-                            </p>
+                            <p><strong>CC:</strong> {selectedEmail.cc}</p>
                           )}
-                          <p>
-                            <strong>Date:</strong> {selectedEmail.timestamp}
-                          </p>
+                          <p><strong>Date:</strong> {selectedEmail.timestamp}</p>
                           <hr />
-                          <p>{selectedEmail.body}</p>
+                          <p style={{ whiteSpace: "pre-wrap" }}>{selectedEmail.body}</p>
                         </Card.Body>
                         <Card.Footer>
-                          <Button variant="secondary" onClick={() => setSelectedEmail(null)}>
-                            Back to Inbox
+                          <Button
+                            variant="secondary"
+                            onClick={() => setSelectedEmail(null)}
+                          >
+                            Back to inbox
                           </Button>
                         </Card.Footer>
                       </Card>
                     ) : (
+                      /* Inbox list */
                       <Card>
-                        <Card.Header>
-                          <Row className="align-items-center">
-                            <Col>Inbox</Col>                         
-                          </Row>
-                        </Card.Header>
-                        <Card.Body style={{ maxHeight: "400px", overflowY: "auto" }}>
+                        <Card.Header>Inbox</Card.Header>
+                        <Card.Body style={{ maxHeight: 400, overflowY: "auto" }}>
                           {emails.length === 0 ? (
                             <p className="text-center text-muted">No emails available</p>
                           ) : (
                             emails.map((email) => (
                               <ListGroup key={email.id} variant="flush" className="mb-2">
-                                <ListGroup.Item 
-                                  action 
+                                <ListGroup.Item
+                                  action
                                   onClick={() => setSelectedEmail(email)}
                                   className={email.is_read ? "" : "bg-light"}
                                 >
                                   <Row>
                                     <Col xs={2}>
-                                      <Button variant="link" className="p-0">
-                                        <i className="fa fa-star"></i>
-                                      </Button>
+                                      {/* placeholder for a star / flag */}
+                                      <i className="fa fa-envelope-open-text text-secondary" />
                                     </Col>
                                     <Col>
                                       <div className="fw-bold">{email.subject}</div>
@@ -164,6 +143,4 @@ const Inbox = () => {
       </Container>
     </Fragment>
   );
-};
-
-export default Inbox;
+}

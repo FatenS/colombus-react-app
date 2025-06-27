@@ -1,153 +1,199 @@
-import React, { useState } from 'react';
-import { Link } from 'react-router-dom';
-import Select from 'react-select';
-import DatePicker from "react-datepicker";
+// src/jsx/pages/account/EditProfile.jsx
+import React, { useEffect, useState } from "react";
+import { Link }      from "react-router-dom";
+import axiosInstance from "../../../services/AxiosInstance";
+import { IMAGES }    from "../../constant/theme";
 
-import { IMAGES } from '../../constant/theme';
+export default function EditProfile() {
+  const [profile, setProfile] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [saving,  setSaving]  = useState(false);
+  const [msg,     setMsg]     = useState("");
 
-const inputBlog = [
-    { label: 'Name', value: 'John' },
-    { label: 'Surname', value: 'Brahim' },
-    { label: 'Specialty', value: 'Developer' },
-    { label: 'Skills', value: 'React,  JavaScript,  PHP' },
-];
+  /* ========== fetch once =================================================== */
+  useEffect(() => {
+    (async () => {
+      try {
+        const { data } = await axiosInstance.get("/profile/me");
+        setProfile(data);
+      } catch (err) {
+        console.error(err);
+        setMsg("Unable to load profile.");
+      } finally {
+        setLoading(false);
+      }
+    })();
+  }, []);
 
-const options1 = [
-    { value: '1', label: 'Gendar' },
-    { value: '2', label: 'Male' },
-    { value: '3', label: 'Female' },
-    { value: '4', label: 'Other' },
-]
+  /* ========== helpers ====================================================== */
+  const API_ROOT = import.meta.env.VITE_API_BASE_URL || "http://localhost:5001";
 
-const options2 = [
-    { value: '1', label: 'Russia' },
-    { value: '2', label: 'Canada' },
-    { value: '3', label: 'China' },
-    { value: '4', label: 'India' },
-]
+  /** returns a full URL no matter what the backend sent */
+  const fullAvatarUrl = (url) =>
+    !url
+      ? IMAGES.tab1
+      : url.startsWith("http")
+        ? url
+        : `${API_ROOT}${url}`;
 
-const options3 = [
-    { value: '1', label: 'Krasnodar' },
-    { value: '2', label: 'Tyumen' },
-    { value: '3', label: 'Chelyabinsk' },
-    { value: '4', label: 'Moscow' },
-]
+  /* ========== change / save ================================================= */
+  const handleChange = (e) =>
+    setProfile((p) => ({ ...p, [e.target.name]: e.target.value }));
 
-const EditProfile = () => {
-    const [startDate, setStartDate] = useState(new Date());
-    return (
-        <>
+  const handleSave = async (e) => {
+    e.preventDefault();
+    if (!profile) return;
+    try {
+      setSaving(true);
+      await axiosInstance.put("/profile/me", {
+        client_name : profile.client_name,
+        phone_number: profile.phone_number,
+        address     : profile.address,
+      });
+      setMsg("Profile updated ✔");
+    } catch (err) {
+      console.error(err);
+      setMsg(err.response?.data?.error || "Update failed.");
+    } finally {
+      setSaving(false);
+    }
+  };
 
-            <div className="row">
-                <div className="col-xl-3 col-lg-4">
-                    <div className="clearfix">
-                        <div className="card card-bx profile-card author-profile mb-3">
-                            <div className="card-body">
-                                <div className="p-5">
-                                    <div className="author-profile">
-                                        <div className="author-media">
-                                            <img src={IMAGES.tab1} alt="" />
-                                            <div className="upload-link" title="" data-toggle="tooltip" data-placement="right" data-original-title="update">
-                                                <input type="file" className="update-flie" />
-                                                <i className="fa fa-camera"></i>
-                                            </div>
-                                        </div>
-                                        <div className="author-info">
-                                            <h6 className="title">Nella Vita</h6>
-                                            <span>Developer</span>
-                                        </div>
-                                    </div>
-                                </div>
-                                <div className="info-list">
-                                    <ul>
-                                        <li><Link to="/app-profile">Models</Link><span>36</span></li>
-                                        <li><Link to="/uc-lightgallery">Gallery</Link><span>3</span></li>
-                                        <li><Link to="/app-profile">Lessons</Link><span>1</span></li>
-                                    </ul>
-                                </div>
-                            </div>
-                            <div className="card-footer">
-                                <div className="input-group mb-3">
-                                    <div className="form-control rounded text-center">Portfolio</div>
-                                </div>
-                                <div className="input-group">
-                                    <Link to="https://www.dexignlab.com/" target="_blank" className="form-control text-primary rounded text-center">https://www.dexignlab.com/</Link>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                <div className="col-xl-9 col-lg-8">
-                    <div className="card profile-card card-bx ">
-                        <div className="card-header">
-                            <h6 className="card-title">Account setup</h6>
-                        </div>
-                        <form className="profile-form">
-                            <div className="card-body">
-                                <div className="row">
-                                    {inputBlog.map((item, ind) => (
-                                        <div className="col-sm-6 mb-3" key={ind}>
-                                            <label className="form-label">{item.label}</label>
-                                            <input type="text" className="form-control" defaultValue={item.value} />
-                                        </div>
-                                    ))}
+  const handleAvatarUpload = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    const fd = new FormData();
+    fd.append("file", file);
+    try {
+      const { data } = await axiosInstance.post("/profile/avatar", fd, {
+        headers: { "Content-Type": "multipart/form-data" },
+      });
+      /* cache-bust & make absolute */
+      setProfile((p) => ({
+        ...p,
+        avatar_url: fullAvatarUrl(`${data.avatar_url}?v=${Date.now()}`),
+      }));
+      setMsg("Avatar updated ✔");
+    } catch (err) {
+      console.error(err);
+      setMsg(err.response?.data?.error || "Avatar upload failed.");
+    }
+  };
 
-                                    <div className="col-sm-6 mb-3">
-                                        <label className="form-label">Gender</label>
-                                        <Select
-                                            options={options1}
-                                            isSearchable={false}
-                                            defaultValue={options1[1]}
-                                            className="custom-react-select"
-                                        />
-                                    </div>
-                                    <div className="col-sm-6 mb-3 modal-date">
-                                        <label className="form-label">Birth</label>
-                                        <div className="input-hasicon mb-xl-0 mb-3">
-                                            <DatePicker selected={startDate} onChange={(date) => setStartDate(date)}
-                                                className="form-control bt-datepicker"
-                                            />
-                                            <div className="icon"><i className="far fa-calendar" /></div>
-                                        </div>
-                                    </div>
-                                    <div className="col-sm-6 mb-3">
-                                        <label className="form-label">Phone</label>
-                                        <input type="number" className="form-control" defaultValue="+123456789" />
-                                    </div>
-                                    <div className="col-sm-6 mb-3">
-                                        <label className="form-label">Email address</label>
-                                        <input type="text" className="form-control" defaultValue="demo@gmail.com" />
-                                    </div>
-                                    <div className="col-sm-6 mb-3">
-                                        <label className="form-label">Country</label>
-                                        <Select
-                                            options={options2}
-                                            isSearchable={false}
-                                            defaultValue={options2[1]}
-                                            className="custom-react-select"
-                                        />
-                                    </div>
-                                    <div className="col-sm-6 mb-3">
-                                        <label className="form-label">City</label>
-                                        <Select
-                                            options={options3}
-                                            isSearchable={false}
-                                            defaultValue={options3[1]}
-                                            className="custom-react-select"
-                                        />
+  /* ========== render ======================================================= */
+  if (loading)  return <div className="text-center mt-4">Loading…</div>;
+  if (!profile) return <div className="text-danger">Profile unavailable.</div>;
 
-                                    </div>
-                                </div>
-                            </div>
-                            <div className="card-footer align-items-center d-flex">
-                                <Link to={"#"} className="btn btn-primary btn-sm">UPDATE</Link>
-                                <Link to={"#"} className="btn-link float-end ms-auto">Forgot your password?</Link>
-                            </div>
-                        </form>
-                    </div>
-                </div>
+  return (
+    <>
+      {msg && (
+        <div className="alert alert-info alert-dismissible fade show" role="alert">
+          {msg}
+          <button type="button" className="btn-close" onClick={() => setMsg("")} />
+        </div>
+      )}
+
+      <div className="row">
+        {/* ──────────── SIDEBAR ──────────── */}
+        <div className="col-xl-3 col-lg-4">
+          <div className="card card-bx profile-card author-profile mb-3">
+            <div className="card-body pb-0 text-center">
+              <div className="position-relative d-inline-block">
+                <img
+                  src={fullAvatarUrl(profile.avatar_url)}
+                  alt="avatar"
+                  className="rounded-circle"
+                  style={{ width: 120, height: 120, objectFit: "cover" }}
+                  onError={(e) => (e.currentTarget.src = IMAGES.tab1)}
+                />
+                <input
+                  type="file"
+                  accept="image/*"
+                  className="position-absolute top-0 start-0 w-100 h-100 opacity-0"
+                  onChange={handleAvatarUpload}
+                  title="Upload new avatar"
+                />
+                <i className="fa fa-camera position-absolute bottom-0 end-0 bg-white rounded-circle p-1" />
+              </div>
+
+              <h5 className="mt-3 mb-1">{profile.client_name || "—"}</h5>
+
+              <ul className="list-unstyled small mt-3 text-start d-inline-block">
+                {profile.email && (
+                  <li className="mb-1">
+                    <i className="fa fa-envelope me-2" /> {profile.email}
+                  </li>
+                )}
+                {profile.phone_number && (
+                  <li className="mb-1">
+                    <i className="fa fa-phone me-2" /> {profile.phone_number}
+                  </li>
+                )}
+                {profile.address && (
+                  <li className="mb-1">
+                    <i className="fa fa-map-marker-alt me-2" /> {profile.address}
+                  </li>
+                )}
+              </ul>
             </div>
-        </>
-    )
+          </div>
+        </div>
+
+        {/* ──────────── MAIN FORM ──────────── */}
+        <div className="col-xl-9 col-lg-8">
+          <div className="card profile-card card-bx">
+            <div className="card-header">
+              <h6 className="card-title mb-0">Account&nbsp;setup</h6>
+            </div>
+
+            <form onSubmit={handleSave}>
+              <div className="card-body">
+                <div className="row">
+                  <div className="col-sm-6 mb-3">
+                    <label className="form-label">Entity name</label>
+                    <input
+                      name="client_name"
+                      className="form-control"
+                      value={profile.client_name || ""}
+                      onChange={handleChange}
+                      required
+                    />
+                  </div>
+
+                  <div className="col-sm-6 mb-3">
+                    <label className="form-label">Phone</label>
+                    <input
+                      name="phone_number"
+                      className="form-control"
+                      value={profile.phone_number || ""}
+                      onChange={handleChange}
+                    />
+                  </div>
+
+                  <div className="col-12 mb-3">
+                    <label className="form-label">Address</label>
+                    <input
+                      name="address"
+                      className="form-control"
+                      value={profile.address || ""}
+                      onChange={handleChange}
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <div className="card-footer d-flex align-items-center">
+                <button type="submit" className="btn btn-primary btn-sm" disabled={saving}>
+                  {saving ? "Saving…" : "UPDATE"}
+                </button>
+                <Link to="/forgot-password" className="btn-link ms-auto">
+                  Forgot your password?
+                </Link>
+              </div>
+            </form>
+          </div>
+        </div>
+      </div>
+    </>
+  );
 }
-export default EditProfile;
