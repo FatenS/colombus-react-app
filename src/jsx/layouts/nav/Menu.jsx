@@ -1,10 +1,17 @@
-const stripByRole = (items, isAdmin) =>
-  items
-    .filter((it) => !it.adminOnly || isAdmin)
-    .map((it) =>
-      it.content ? { ...it, content: stripByRole(it.content, isAdmin) } : it
-    )
-    .filter((it) => it.to || (it.content && it.content.length));
+const stripByRole = (items, isAdmin) => {
+  return items
+  .filter((it) => {
+    // Only log undefined adminOnly properties in development
+    if (process.env.NODE_ENV === 'development' && it.adminOnly === undefined) {
+      console.log(`Warning: ${it.title} has undefined adminOnly property`);
+    }
+    return !it.adminOnly || isAdmin;
+  })
+  .map((it) =>
+    it.content ? { ...it, content: stripByRole(it.content, isAdmin) } : it
+  )
+  .filter((it) => it.to || (it.content && it.content.length));
+};
 
 export const MenuList = [
   //Dashboard
@@ -16,6 +23,7 @@ export const MenuList = [
       {
         title: "Dashboard",
         to: "dashboard",
+        adminOnly: false
       },
       // {
       //   title: "Dashboard Dark",
@@ -32,6 +40,7 @@ export const MenuList = [
       {
         title: "TCA",
         to: "tca",
+        adminOnly: true 
       },
     ],
   },
@@ -52,10 +61,12 @@ export const MenuList = [
       {
         title: "Simulation",
         to: "simulation",
+        adminOnly: false
       },
       {
         title: "Order",
         to: "order",
+        adminOnly: false
       },
     ],
   },
@@ -119,6 +130,7 @@ export const MenuList = [
       {
         title: "Edit Profile",
         to: "edit-profile",
+        adminOnly: false
       },
       // {
       //   title: "Post Details",
@@ -136,6 +148,7 @@ export const MenuList = [
           {
             title: "Inbox",
             to: "email-inbox",
+            adminOnly: true
           },
           // {
           //   title: "Read",
@@ -171,6 +184,7 @@ export const MenuList = [
           {
             title: "Invoices",
             to: "checkout",
+            adminOnly: false
           },
           // {
           //   title: "Invoice",
@@ -465,4 +479,4 @@ export const MenuList = [
   //   ],
   // },
 ];
-export const buildMenu = (isAdmin) => stripByRole(MenuList, isAdmin); 
+export const buildMenu = (isAdmin) => stripByRole(MenuList, isAdmin);

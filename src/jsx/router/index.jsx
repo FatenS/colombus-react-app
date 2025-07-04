@@ -22,7 +22,7 @@ import DashboardDark from "./../pages/dashboard/DashboardDark";
 import Market from "./../pages/dashboard/Market";
 import LandingPage from "./../pages/dashboard/LandingPage";
 import CoinDetails from "./../pages/dashboard/CoinDetails";
-import Portofolio from "./../pages/dashboard/Portofolio";
+import AdminTcaPage from "../pages/dashboard/AdminTcaPage";
 import ResetPassword  from "../pages/authentication/ResetPassword";
 import ForgotPassword from "../pages/authentication/ForgotPassword";
 import Login from "../pages/authentication/Login";
@@ -133,7 +133,8 @@ const Markup = () => {
   const allroutes = [
     { url: "market", component: <Market /> },
     { url: "coin-details", component: <CoinDetails /> },
-    { url: "tca", component: <Portofolio /> },
+    { url: "tca", component:         <AdminTcaPage/>
+     },
 
     //Trading
     // { url: "trading-market", component: <TradingMarket /> },

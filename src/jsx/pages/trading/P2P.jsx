@@ -14,6 +14,7 @@ import {
   ResponsiveContainer,
   Label,
 } from "recharts";
+const API_ROOT = axiosInstance.defaults.baseURL?.replace(/\/$/, "") || "";
 
 // Utility to format date to YYYY-MM-DD
 const formatDate = (date) => {
@@ -52,7 +53,9 @@ const ExposureSummary = () => {
   const [fileOpenPos, setFileOpenPos] = useState(null);
   const [uploadMessageOpenPos, setUploadMessageOpenPos] = useState("");
 
-
+  function downloadOpenPosTemplate() {
+    window.location.href = API_ROOT + "/download-open-positions-template";
+  }
 
   // ------------------------------------------------
   // 4) Functions to fetch data from backend
@@ -267,6 +270,15 @@ const handleConvert = async (openPositionId) => {
 
                 {/* Right: Upload Open Positions */}
                 <div className="col-lg-6 col-md-12">
+                    {/* download button */}
+                    <button
+                    onClick={downloadOpenPosTemplate}
+                    className="btn btn-primary"
+
+                  >
+                    Download template
+                  </button>
+                  <p>download template fill it with your data, and upload file below</p>
                   <label htmlFor="fileOpenPos" className="mb-1 text-muted">
                     Open Positions File
                   </label>

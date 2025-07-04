@@ -1,5 +1,10 @@
 import React, { useEffect, useState, useCallback } from "react";
 import {
+  selectOrders,
+  selectMarketOrders,
+  selectMatchedOrders,
+} from '../../../store/selectors/OrderSelectors';
+import {
   Tab,
   Nav,
   Button,
@@ -38,6 +43,7 @@ import {
   deletePremiumRateAction,
 } from "../../../store/actions/OrderActions";
 import axiosInstance from "../../../services/AxiosInstance";
+
 const SubmitOrderForm = React.memo(
   ({
     isEditMode,
@@ -234,19 +240,25 @@ const FutureTrading = () => {
   const [activePage, setActivePage] = useState(1);
   const itemsPerPage = 10;
 
-  const {
-    orders = [],
-    matchedOrders = [],
-    marketOrders = [],
-    premiumRates = [],
-  } = useSelector((state) => state.orderReducer || {});
+  // FutureTrading.jsx
+const orders         = useSelector(selectOrders);
+const marketOrders   = useSelector(selectMarketOrders);
+const matchedOrders  = useSelector(selectMatchedOrders);
+console.log("useSelector values:", { orders, marketOrders, matchedOrders });
+
+const {premiumRates = [],
+} = useSelector((state) => state.orderReducer || {});
+
+  const safeOrders = Array.isArray(orders) ? orders : [];
+
   const { roles = [] } = useSelector((state) => state.auth.auth || {});
   const isAdmin = roles.includes("Admin");
 
   // For admin view, use original tab names; for client view, use two tabs: "My Orders" and "New Trade"
   const initialClientTab = isAdmin ? "Order" : "MyOrders";
-  const [activeTab, setActiveTab] = useState(initialClientTab);
-
+  const [activeTab, setActiveTab] = useState(() => (
+     roles.includes("Admin") ? "Order" : "MyOrders"
+    ));
   // New filter states:
   const [adminClientSearch, setAdminClientSearch] = useState("");
   const [clientCategoryFilter, setClientCategoryFilter] = useState("All");
@@ -273,7 +285,9 @@ const FutureTrading = () => {
   // NEW state variables for Option orders
   const [optionType, setOptionType] = useState("CALL");
   const [strike, setStrike] = useState("");
-
+  useEffect(() => {
+     console.log("orders in Redux:", orders);   // 👈 should print an array of objects
+    }, [orders]);
   // Pagination: reset active page if orders change
   useEffect(() => {
     const totalPages = Math.ceil(orders.length / itemsPerPage);
@@ -281,6 +295,17 @@ const FutureTrading = () => {
       setActivePage(1);
     }
   }, [orders, activePage, itemsPerPage]);
+  useEffect(() => {
+    if (roles.includes("Admin") && activeTab === "MyOrders") {
+      setActiveTab("Order");          // jump to the correct admin tab
+    }
+  }, [roles, activeTab]);
+  // FutureTrading.jsx – just after the other effects
+useEffect(() => {
+  if (isAdmin && activeTab === "Order") {
+    setAdminClientSearch("");         
+  }
+}, [isAdmin, activeTab]);
 
   // Fetch orders based on tab and role
   useEffect(() => {
@@ -582,11 +607,15 @@ const FutureTrading = () => {
       (activePage - 1) * itemsPerPage,
       activePage * itemsPerPage
     );
+    
+console.log('rows handed to <OrderTable>: ', orders.length);        // should be 9
+console.log('rows rendered *this page* : ', currentOrders.length);  // 1-10
+
     return (
       <div>
         
         <div className="table-responsive">
-          <table className="table shadow-hover orderbookTable">
+          <table className="table orderbookTable">
             <thead>
               <tr>
                 <th>ID</th>
@@ -709,24 +738,37 @@ const FutureTrading = () => {
     );
   };
 
-  const filteredAdminOrders =
-    isAdmin && activeTab === "Order"
-      ? orders.filter(
-          (order) =>
-            order.client_name &&
-            order.client_name.toLowerCase().includes(adminClientSearch.toLowerCase())
-        )
-      : orders;
+  const isSearchActive = adminClientSearch.replace(/\s/g, "") !== ""; // removes ALL whitespace
 
-  const filteredClientOrders =
-    !isAdmin && activeTab === "MyOrders"
-      ? orders.filter((order) =>
-          clientCategoryFilter === "All"
-            ? true
-            : order.trade_type &&
-              order.trade_type.toLowerCase() === clientCategoryFilter.toLowerCase()
-        )
-      : orders;
+  const filteredAdminOrders = isSearchActive
+    ? safeOrders.filter(o =>
+        (o.client_name || "")
+          .toLowerCase()
+          .includes(adminClientSearch.toLowerCase().trim())
+      )
+    : safeOrders;
+  
+
+  const filteredClientOrders = !isAdmin && activeTab === "MyOrders"
+  ? safeOrders.filter(o =>
+       clientCategoryFilter === "All"
+         ? true
+         : o.trade_type?.toLowerCase() === clientCategoryFilter.toLowerCase()
+     )
+   : safeOrders;
+
+   /* -----------------  GLOBAL PIPELINE DEBUG  ------------------- */
+console.log(
+  "ACTIVE-TAB:",           activeTab,
+  "| search:",             JSON.stringify(adminClientSearch),
+  "| isSearchActive:",     isSearchActive,
+  "\n  safeOrders:",       safeOrders.length,
+  "filteredAdminOrders:",  filteredAdminOrders.length
+);
+/* ------------------------------------------------------------- */
+
+
+
 
   return (
     <div className="container-fluid">
@@ -801,6 +843,8 @@ const FutureTrading = () => {
                   )}
                   <Tab.Content>
                     <Tab.Pane eventKey="Order">
+                    {console.log("➡ Orders → handed to table:", filteredAdminOrders.length)}
+
                       <div className="d-flex flex-wrap">
                         <div className="col-lg-8 col-md-12 col-12">
                           <OrderTable

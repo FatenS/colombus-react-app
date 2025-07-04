@@ -44,7 +44,7 @@ export default function ForwardTca({ currency, clientIdOrName = null }) {
   const [loading, setLoading] = useState(true);
   const [yearToPlot, setYearToPlot] = useState("all");  // "all" or "2024", "2025", …
 
-  // ─── FETCH ───
+// ─── FETCH ───
  
 useEffect(() => {
   setLoading(true);

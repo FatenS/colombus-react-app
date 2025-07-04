@@ -1,9 +1,10 @@
-import React, { useReducer, useContext, useEffect, useState } from "react";
+import React, { useReducer, useContext, useEffect, useState, useMemo } from "react";
 import { Collapse } from "react-bootstrap";
 /// Link
 import { Link } from "react-router-dom";
-import { MenuList } from "./Menu";
+import { MenuList, buildMenu } from "./Menu";  // Update this import
 import logoFull from "../../../assets/images/white.png";
+import { useSelector } from 'react-redux'; // Add this import
 
 import { useScrollPosition } from "@n8tb1t/use-scroll-position";
 import { ThemeContext } from "../../../context/ThemeContext";
@@ -21,6 +22,12 @@ const initialState = {
 
 const SideBar = () => {
   let Latest = new Date();
+  const { roles = [] } = useSelector((state) => state.auth.auth || {});
+  const isAdmin = roles.includes("Admin");
+  const filteredMenuList = useMemo(() => {
+    console.log('Recalculating menu list for isAdmin:', isAdmin);
+    return buildMenu(isAdmin);
+  }, [isAdmin]); 
   const {
     iconHover,
     sidebarposition,
@@ -59,7 +66,7 @@ const SideBar = () => {
   path = path[path.length - 1];
 
   useEffect(() => {
-    MenuList.forEach((data) => {
+    filteredMenuList.forEach((data) => {
       data.content?.forEach((item) => {
         if (path === item.to) {
           setState({ active: data.title });
@@ -71,7 +78,7 @@ const SideBar = () => {
         });
       });
     });
-  }, [path]);
+  }, [path, filteredMenuList]);
 
   return (
     <div
@@ -95,7 +102,7 @@ const SideBar = () => {
       <div className="menu-scroll">
         <div className="dlabnav-scroll">
           <ul className="metismenu" id="menu">
-            {MenuList.map((data, index) => {
+          {filteredMenuList.map((data, index) => {
               let menuClass = data.classsChange;
               if (menuClass === "menu-title") {
                 return (

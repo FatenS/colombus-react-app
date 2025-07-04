@@ -142,7 +142,7 @@ function hasAtLeast2Points(arr = []) {
 // --- Component ---
 
 const Market = () => {
-const { t, i18n } = useTranslation();        // ← on récupère aussi i18n
+const { t, i18n } = useTranslation();        
 const LOCALE = i18n.language === "en" ? "en-US" : "fr-FR";
   const dispatch = useDispatch();
   const pdfRef = useRef(null);
@@ -152,7 +152,6 @@ const LOCALE = i18n.language === "en" ? "en-US" : "fr-FR";
   const { summary, forwardRate, superperformanceTrend, bankGains } = useSelector(
     (state) => state.dashboard
   );
-// right after you compute sortedArr1 / sortedArr2
 
   useEffect(() => {
     dispatch(fetchSummary(selectedCurrency.value));
@@ -916,7 +915,6 @@ const optionsLineSuperImport = {
   {t("commissionFootnote")}
             </p>
         </div>
-        <AdminTcaPage/>
 
       </div>
     </>

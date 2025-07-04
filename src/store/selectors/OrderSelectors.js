@@ -1,12 +1,16 @@
 //OrderSelector.js
 import { createSelector } from 'reselect';
 
-const selectOrderState = (state) => state.orderReducer;
+const selectOrderState = state => state.orderReducer || {};
 
 export const selectOrders = createSelector(
     [selectOrderState],
-    (orderState) => orderState.orders || []
-);
+    (orderState) => {
+      console.log("selectOrders ⇒", orderState.orders);   // <-- add
+      return orderState.orders || orderState.allOrders || [];
+    }
+  );
+  
 
 export const selectMarketOrders = createSelector(
     [selectOrderState],

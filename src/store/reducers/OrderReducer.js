@@ -24,7 +24,13 @@ const initialState = {
 export const orderReducer = (state = initialState, action) => {
     switch (action.type) {
         case FETCH_ORDERS_SUCCESS:
-            return { ...state, orders: action.payload, error: null };
+             return {
+                   ...state,
+                    orders: Array.isArray(action.payload)
+                          ? action.payload
+                          : JSON.parse(action.payload),   // parse if someone sent a string
+                  error: null,
+               };
         case FETCH_MATCHED_ORDERS_SUCCESS:
             return { ...state, matchedOrders: action.payload, error: null };
         case UPDATE_ORDERS:
