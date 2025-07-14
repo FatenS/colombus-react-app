@@ -26,17 +26,30 @@ axiosInstance.interceptors.request.use(cfg => {
 
 /* -----------------------  RESPONSE interceptor  ---------------------- */
 /* Silent refresh once if access_token is expired                         */
+// src/store/utils/axiosInstance.js
 axiosInstance.interceptors.response.use(
   res => res,
   async err => {
     const orig = err.config;
+
+   // 1) If the 401 came back from the refresh endpoint itself, stop right here:
+    if (orig.url?.endsWith("/admin/token/refresh")) {
+     // you've already tried to refresh and it failed → force login
+      window.location.href = "/login";
+      return Promise.reject(err);
+   }
+
+   // 2) Otherwise: if 401 and we haven’t retried yet, try one silent refresh
     if (err.response?.status === 401 && !orig._retry) {
       orig._retry = true;
       try {
-        await axiosInstance.post("/admin/token/refresh");  
-        return axiosInstance(orig);                       
-      } catch {
-        window.location.href = "/login";                  
+       await axiosInstance.post("/admin/token/refresh");
+        // token is now fresh, replay the original request
+       return axiosInstance(orig);
+      } catch (refreshErr) {
+        // refresh failed → force login
+        window.location.href = "/login";
+        return Promise.reject(refreshErr);
       }
     }
     return Promise.reject(err);

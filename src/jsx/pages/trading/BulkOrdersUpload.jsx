@@ -12,10 +12,8 @@ const ADMIN_TEMPLATE_URL  = "/admin/download-orders-template";
 const CLIENT_UPLOAD_URL   = "/upload-orders";
 const CLIENT_TEMPLATE_URL = "/download-orders-template";
 
-export default function BulkOrdersUpload() {
+export default function BulkOrdersUpload({ isAdmin, onSuccess = () => {} }) {
   /* -------- basic role check -------- */
-  const { roles = [] } = useSelector((s) => s.auth.auth || {});
-  const isAdmin = roles.includes("Admin");
   const dispatch = useDispatch();
 
   /* -------- component state --------- */
@@ -82,7 +80,8 @@ export default function BulkOrdersUpload() {
 
       Swal.fire("Success", "Orders uploaded.", "success");
       dispatch(fetchOrdersAction(isAdmin));
-
+     Swal.fire("Success", "Orders uploaded.", "success");
+      onSuccess();    
       /* reset local UI */
       setFile(null);
       setClientId("");

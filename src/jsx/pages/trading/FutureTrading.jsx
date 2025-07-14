@@ -1,4 +1,5 @@
-import React, { useEffect, useState, useCallback } from "react";
+import React, { useEffect, useState, useCallback, useMemo,          //  ← NEW
+ } from "react";
 import {
   selectOrders,
   selectMarketOrders,
@@ -239,7 +240,6 @@ const FutureTrading = () => {
   const [uploadStatus, setUploadStatus] = useState("");
   const [activePage, setActivePage] = useState(1);
   const itemsPerPage = 10;
-
   // FutureTrading.jsx
 const orders         = useSelector(selectOrders);
 const marketOrders   = useSelector(selectMarketOrders);
@@ -288,14 +288,8 @@ const {premiumRates = [],
   useEffect(() => {
      console.log("orders in Redux:", orders);   // 👈 should print an array of objects
     }, [orders]);
-  // Pagination: reset active page if orders change
-  useEffect(() => {
-    const totalPages = Math.ceil(orders.length / itemsPerPage);
-    if (activePage > totalPages && totalPages > 0) {
-      setActivePage(1);
-    }
-  }, [orders, activePage, itemsPerPage]);
-  useEffect(() => {
+  
+    useEffect(() => {
     if (roles.includes("Admin") && activeTab === "MyOrders") {
       setActiveTab("Order");          // jump to the correct admin tab
     }
@@ -757,6 +751,37 @@ console.log('rows rendered *this page* : ', currentOrders.length);  // 1-10
      )
    : safeOrders;
 
+
+/* ⭐️  PASTE visibleRows right here  ⭐️ */
+const visibleRows = useMemo(() => {
+  if (isAdmin) {
+    switch (activeTab) {
+      case "Order":
+        return filteredAdminOrders.length;
+      case "MarketOrders":
+        return marketOrders.length;
+      case "MatchedOrders":
+        return matchedOrders.length;
+      default:
+        return 0;
+    }
+  }
+  // client view
+  return filteredClientOrders.length;
+}, [
+  isAdmin,
+  activeTab,
+  filteredAdminOrders.length,
+  marketOrders.length,
+  matchedOrders.length,
+  filteredClientOrders.length,
+]);
+
+// page-bounding effect can stay just below
+useEffect(() => {
+  const pages = Math.max(1, Math.ceil(visibleRows / itemsPerPage));
+  if (activePage > pages) setActivePage(1);
+}, [visibleRows, activePage, itemsPerPage]);
    /* -----------------  GLOBAL PIPELINE DEBUG  ------------------- */
 console.log(
   "ACTIVE-TAB:",           activeTab,
@@ -785,14 +810,10 @@ console.log(
         {/* File Upload (Clients) */}
         {!isAdmin && (
           <div className="col-12 mb-3">
-            <Form.Group>
-              <Form.Label>Upload Excel File for Orders</Form.Label>
-              <Form.Control type="file" onChange={handleFileChange} />
-              <Button className="mt-2" variant="primary" onClick={handleFileUpload}>
-                Upload Orders
-              </Button>
-              {uploadStatus && <p>{uploadStatus}</p>}
-            </Form.Group>
+          <BulkOrdersUpload
+              isAdmin={false}
+              onSuccess={() => dispatch(fetchOrdersAction(false))}
+            />
           </div>
         )}
 
@@ -822,8 +843,11 @@ console.log(
                 {isAdmin && (
                       <Row className="mb-3">
                         <Col md={6}>
-                          <BulkOrdersUpload />           
-                        </Col>
+                          <BulkOrdersUpload
+                          isAdmin={true}
+                          onSuccess={() => dispatch(fetchOrdersAction(true))}
+                        />
+                        </Col>                        
                         <Col md={6} className="d-flex justify-content-end">
                             </Col>
                       </Row>
