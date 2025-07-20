@@ -199,6 +199,24 @@ const montantEnMots = (() => {
   white-space: nowrap;
 }
 
+.invoice-table {
+    font-size: 12px;
+  }
+  .invoice-table th, .invoice-table td {
+    padding: 4px 8px;
+    white-space: nowrap; /* or use normal for wrapping */
+    max-width: 120px;     /* adjust as needed */
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .table-responsive {
+    overflow-x: auto;
+  }
+  .invoice-table td {
+    white-space: normal; /* allows wrapping */
+    word-break: break-all;
+  }
+
 
       `}</style>
     

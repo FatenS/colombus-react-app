@@ -5,6 +5,8 @@ const stripByRole = (items, isAdmin) => {
     if (process.env.NODE_ENV === 'development' && it.adminOnly === undefined) {
       console.log(`Warning: ${it.title} has undefined adminOnly property`);
     }
+    // If clientOnly is true, only show if NOT admin
+    if (it.clientOnly) return !isAdmin;
     return !it.adminOnly || isAdmin;
   })
   .map((it) =>
@@ -23,7 +25,8 @@ export const MenuList = [
       {
         title: "Dashboard",
         to: "dashboard",
-        adminOnly: false
+        adminOnly: false, // visible to non-admins (clients)
+        clientOnly: true  // <-- add this property to clarify
       },
       // {
       //   title: "Dashboard Dark",

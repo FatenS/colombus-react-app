@@ -32,7 +32,7 @@ export function logout(navigate) {
       console.warn('Logout API failed:', err);
     } finally {
       dispatch({ type: LOGOUT_ACTION });
-      navigate('/login', { replace: true });
+      navigate('/', { replace: true }); // <-- go to landing page after logout
     }
   };
 }
@@ -58,7 +58,12 @@ export function loginAction(email, password, navigate) {
         login(email, password)
             .then((response) => {
                 dispatch(loginConfirmedAction(response.data)); // response contains roles
-                navigate('/dashboard');
+                const roles = response.data.roles || [];
+                if (roles.includes("Admin")) {
+                    navigate('/order'); // redirect admin to orders (futuretrading)
+                } else {
+                    navigate('/dashboard');
+                }
             })
             .catch((error) => {
                 const errorMessage = formatError(error);

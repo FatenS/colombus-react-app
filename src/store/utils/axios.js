@@ -1,8 +1,10 @@
 import axios from "axios";
 
 export const api = axios.create({
-  baseURL: "http://localhost:5001",
-  withCredentials: true           // send cookies on every request
+  baseURL: "https://backend.colombus-capital.com/", 
+  // baseURL: "http://localhost:5001/",
+   // or your actual backend URL
+  withCredentials: true
 });
 
 // attach CSRF token from cookie

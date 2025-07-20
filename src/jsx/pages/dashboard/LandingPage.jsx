@@ -201,17 +201,13 @@ const LandingPage = () => {
         </div>
       </section>
       <section id="team" className="team-section">
-        <div className="team-header" data-aos="fade-down">
+        <div className="team-header">
           <h2>Meet Our Team</h2>
-          <p>
-            40+ years of combined experience in FX risk management, investment,
-            and finance.
-          </p>
+          <p>40+ years of combined experience in FX risk management, investment, and finance.</p>
           <CalendlyPopup />
         </div>
-
         <div className="timeline-container">
-          <div className="timeline-item" data-aos="fade-right">
+          <div className="timeline-item">
             <div className="timeline-image-left">
               <img src={team1} alt="Eymen Errais" className="team-image" />
             </div>
@@ -226,7 +222,7 @@ const LandingPage = () => {
               </p>
             </div>
           </div>
-          <div className="timeline-item" data-aos="fade-left">
+          <div className="timeline-item">
             <div className="timeline-content-left">
               <h3>Mezri ElKaroui</h3>
               <p>
