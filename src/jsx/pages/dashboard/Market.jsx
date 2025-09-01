@@ -190,7 +190,8 @@ useEffect(() => {
   // To keep the triangle marker at a consistent position, we use the same values as the bar.
   // (The label will show the actual gain.)
   const gainData = sortedArr1;
-  const grossGainMtd = sortedArr2.at(-1) ?? 0;   // 4 K for May
+  // Assuming sortedArr2 is an array of daily gains for the current month
+  const grossGainMtd = sortedArr2.at(-1) ?? 0;
 
   // --- Bar Chart Options ---
   /* ------------------------------------------------------------------ */
@@ -624,7 +625,38 @@ const optionsLineSuperImport = {
   //   return parts?.[2] === "2025";
   // });
   
-  const displayedBankGains = bankGains;
+  // Filter bank gains to show current month and previous month
+  const getCurrentAndPreviousMonthData = () => {
+    const currentDate = new Date();
+    const currentYear = currentDate.getFullYear();
+    const currentMonth = currentDate.getMonth() + 1; // January is 0, so add 1
+    
+    // Get previous month
+    const previousMonth = currentMonth === 1 ? 12 : currentMonth - 1;
+    const previousYear = currentMonth === 1 ? currentYear - 1 : currentYear;
+    
+    const filteredGains = bankGains.filter((row) => {
+      const dateStr = row["Date Transaction"];
+      if (!dateStr) return false;
+      
+      // Parse the date (assuming format like "DD/MM/YYYY")
+      const parts = dateStr.split("/");
+      if (parts.length !== 3) return false;
+      
+      const day = parseInt(parts[0], 10);
+      const month = parseInt(parts[1], 10);
+      const year = parseInt(parts[2], 10);
+      
+      // Check if it's current month or previous month
+      return (month === currentMonth && year === currentYear) || 
+             (month === previousMonth && year === previousYear);
+    });
+    
+    console.log(`Filtered to ${filteredGains.length} transactions for current month (${currentMonth}/${currentYear}) and previous month (${previousMonth}/${previousYear})`);
+    return filteredGains;
+  };
+  
+  const displayedBankGains = getCurrentAndPreviousMonthData();
 
   const showExportChart = hasExportOrders && superExecExport.length > 0;
   const showImportChart = hasImportOrders && superExecImport.length > 0;
@@ -667,16 +699,28 @@ const optionsLineSuperImport = {
       : Math.abs(num).toFixed(2);
   }
   
+  // Helper to split array into chunks
+  function chunkArray(array, size) {
+    const result = [];
+    for (let i = 0; i < array.length; i += size) {
+      result.push(array.slice(i, i + size));
+    }
+    return result;
+  }
+
+  // In PDF mode, split the table into chunks of 20; otherwise, show all
+  const tableChunks = pdfMode ? chunkArray(displayedBankGains, 20) : [displayedBankGains];
+
   return (
     <>
       <div className="text-end me-3 mt-2">
         <Button variant="primary" onClick={handleDownloadPdf}>
-          {t("downloadPdf")}   {/* exact même nom que dans i18n.js */}
-
+          {t("downloadPdf")}
         </Button>
       </div>
       <LanguageSwitcher />
       <div ref={pdfRef} className={pdfMode ? "" : "container-fluid"} style={pdfContainerStyle}>
+        {/* Page 1: charts and summary */}
         <div className="pdf-page" style={pdfPageStyle}>
           <Row className="mb-2" style={{ margin: 0 }}>
             <Col md={12}>
@@ -726,10 +770,10 @@ const optionsLineSuperImport = {
     <Card.Body style={{ padding: 0 }}>
    
 <PerformanceGrid
-   s={{ ...summary, gross_gain_mtd: grossGainMtd }}  // ← inject one extra field
-   currency={selectedCurrency.value}
-   pdf={pdfMode}
- />
+  s={{ ...summary, net_gain_tnd_mtd: grossGainMtd }}
+  currency={selectedCurrency.value}
+  pdf={pdfMode}
+/>
 
 
     </Card.Body>
@@ -833,7 +877,23 @@ const optionsLineSuperImport = {
               <Card className="shadow-sm" style={{ border: "1px solid #ccc" }}>
                 <Card.Body>
                   <Card.Title className="text-center" style={{ fontSize: "1rem", fontWeight: 500, color: "#001247", textTransform: "none", margin: "5px" }}>
-                    {t("gainsTable")}
+                    {t("gainsTable")} - {(() => {
+                      const currentDate = new Date();
+                      const currentYear = currentDate.getFullYear();
+                      const currentMonth = currentDate.getMonth() + 1;
+                      const previousMonth = currentMonth === 1 ? 12 : currentMonth - 1;
+                      const previousYear = currentMonth === 1 ? currentYear - 1 : currentYear;
+                      
+                      const monthNames = [
+                        "January", "February", "March", "April", "May", "June",
+                        "July", "August", "September", "October", "November", "December"
+                      ];
+                      
+                      const currentMonthName = monthNames[currentMonth - 1];
+                      const previousMonthName = monthNames[previousMonth - 1];
+                      
+                      return `${previousMonthName} ${previousYear} - ${currentMonthName} ${currentYear}`;
+                    })()}
                   </Card.Title>
                   <div style={{ maxHeight: pdfMode ? "none" : "300px", overflowY: pdfMode ? "visible" : "auto" }}>
                   <Table    className="gains-table"
@@ -916,6 +976,86 @@ const optionsLineSuperImport = {
             </p>
         </div>
 
+        {/* PDF Table Pages: Only show in PDF mode, one page per 20 transactions */}
+        {pdfMode && tableChunks.map((chunk, idx) => (
+          <div className="pdf-page" style={pdfPageStyle} key={idx}>
+            <Row>
+              <Col>
+                <Card className="shadow-sm" style={{ border: "1px solid #ccc" }}>
+                  <Card.Body>
+                    <Card.Title className="text-center" style={{ fontSize: "1rem", fontWeight: 500, color: "#001247", textTransform: "none", margin: "5px", textAlign: "center" }}>
+                      {t("gainsTable")}
+                    </Card.Title>
+                    <div style={{
+                      maxHeight: "none",
+                      overflowY: "visible",
+                      height: "auto",
+                      minHeight: "auto"
+                    }}>
+                      <Table className="gains-table"
+                        striped
+                        bordered
+                        hover={!pdfMode}
+                        responsive={!pdfMode}
+                        style={{
+                          borderCollapse: "collapse",
+                          width: "100%",
+                          tableLayout: pdfMode ? "auto" : "fixed",
+                          fontSize: pdfMode ? "0.7rem" : "0.8rem"
+                        }}
+                      >
+                        <thead>
+                          <tr style={{ color: "#001247" }}>
+                            <th style={{ padding: "4px 6px", lineHeight: "1.1" }}>{t("thDateTx")}</th>
+                            <th style={{ padding: "4px 6px", lineHeight: "1.1" }}>{t("thDateVal")}</th>
+                            <th style={{ padding: "4px 6px", lineHeight: "1.1" }}>{t("thDevise")}</th>
+                            <th style={{ padding: "4px 6px", lineHeight: "1.1" }}>{t("thType")}</th>
+                            <th style={{ padding: "4px 6px", lineHeight: "1.1" }}>{t("thTypeOp")}</th>
+                            <th style={{ padding: "4px 6px", lineHeight: "1.1" }}>{t("thAmount")}</th>
+                            <th style={{ padding: "4px 6px", lineHeight: "1.1" }}>{t("thBank")}</th>
+                            <th style={{ padding: "4px 6px", lineHeight: "1.1" }}>{t("thRefRate")}</th>
+                            <th style={{ padding: "4px 6px", lineHeight: "1.1" }}>{t("thExecRate")} </th>
+                            <th style={{ padding: "4px 6px", lineHeight: "1.1" }}>{t("thGain")}</th>
+                            <th style={{ padding: "4px 6px", lineHeight: "1.1" }}>{t("thPctGain")}</th>
+                            <th style={{ padding: "4px 6px", lineHeight: "1.1" }}>{t("thCommission")}</th>
+                            <th style={{ padding: "4px 6px", lineHeight: "1.1" }}>{t("thCommGain")}</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {chunk.length ? (
+                            chunk.map((row, i) => (
+                              <tr key={i}>
+                                <td style={{ padding: "4px 6px", lineHeight: "1.2" }}>{row["Date Transaction"]}</td>
+                                <td style={{ padding: "4px 6px", lineHeight: "1.2" }}>{row["Date Valeur"]}</td>
+                                <td style={{ padding: "4px 6px", lineHeight: "1.2" }}>{row["Devise"]}</td>
+                                <td style={{ padding: "4px 6px", lineHeight: "1.2" }}>{row["Type"]}</td>
+                                <td style={{ padding: "4px 6px", lineHeight: "1.2" }}>{row["Type d’opération"]}</td>
+                                <td style={{ padding: "4px 6px", lineHeight: "1.2" }}> {fmtMontant(row["Montant"], 0, LOCALE)}</td>
+                                <td style={{ padding: "4px 6px", lineHeight: "1.2" }}>{row.Banque}</td>
+                                <td style={{ padding: "4px 6px", lineHeight: "1.2" }}>{row["Taux de référence *"]}</td>
+                                <td style={{ padding: "4px 6px", lineHeight: "1.2" }}>{row["Taux d’exécution"]}</td>
+                                <td style={{ padding: "4px 6px", lineHeight: "1.2" }}>{fmtMontant(formatPositiveNumber(row["Gain**"]), 0, LOCALE)}</td>
+                                <td style={{ padding: "4px 6px", lineHeight: "1.2" }}>{formatPositiveNumber(row["% Gain"], true)}</td>
+                                <td style={{ padding: "4px 6px", lineHeight: "1.2" }}>{fmtMontant(formatPositiveNumber(row["Commission CC ***"]), 0, LOCALE)}</td>
+                                <td style={{ padding: "4px 6px", lineHeight: "1.2" }}>{row["Commission % de gain"]}</td>
+                              </tr>
+                            ))
+                          ) : (
+                            <tr>
+                              <td colSpan={8} className="text-center" style={{ padding: "6px", color: "#001247" }}>
+                                {t("noData")}
+                              </td>
+                            </tr>
+                          )}
+                        </tbody>
+                      </Table>
+                    </div>
+                  </Card.Body>
+                </Card>
+              </Col>
+            </Row>
+          </div>
+        ))}
       </div>
     </>
   );

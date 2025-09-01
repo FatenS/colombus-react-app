@@ -707,27 +707,75 @@ console.log('rows rendered *this page* : ', currentOrders.length);  // 1-10
             </tbody>
           </table>
         </div>
-        <Pagination className="justify-content-center mt-3">
-          <Pagination.First onClick={() => handlePageChange(1)} disabled={activePage === 1} />
-          <Pagination.Prev onClick={() => handlePageChange(activePage - 1)} disabled={activePage === 1} />
-          {[...Array(Math.ceil(orders.length / itemsPerPage)).keys()].map((number) => (
-            <Pagination.Item
-              key={number + 1}
-              active={number + 1 === activePage}
-              onClick={() => handlePageChange(number + 1)}
-            >
-              {number + 1}
-            </Pagination.Item>
-          ))}
-          <Pagination.Next
-            onClick={() => handlePageChange(activePage + 1)}
-            disabled={activePage === Math.ceil(orders.length / itemsPerPage)}
-          />
-          <Pagination.Last
-            onClick={() => handlePageChange(Math.ceil(orders.length / itemsPerPage))}
-            disabled={activePage === Math.ceil(orders.length / itemsPerPage)}
-          />
-        </Pagination>
+        <div className="d-flex justify-content-center mt-3 mb-4">
+          <Pagination className="flex-wrap">
+            <Pagination.First onClick={() => handlePageChange(1)} disabled={activePage === 1} />
+            <Pagination.Prev onClick={() => handlePageChange(activePage - 1)} disabled={activePage === 1} />
+            
+            {/* Show limited page numbers to prevent overflow */}
+            {(() => {
+              const totalPages = Math.ceil(orders.length / itemsPerPage);
+              const maxVisiblePages = 5;
+              let startPage = Math.max(1, activePage - Math.floor(maxVisiblePages / 2));
+              let endPage = Math.min(totalPages, startPage + maxVisiblePages - 1);
+              
+              // Adjust start page if we're near the end
+              if (endPage - startPage < maxVisiblePages - 1) {
+                startPage = Math.max(1, endPage - maxVisiblePages + 1);
+              }
+              
+              const pages = [];
+              
+              // Always show first page if not in range
+              if (startPage > 1) {
+                pages.push(
+                  <Pagination.Item key={1} onClick={() => handlePageChange(1)}>
+                    1
+                  </Pagination.Item>
+                );
+                if (startPage > 2) {
+                  pages.push(<Pagination.Ellipsis key="start-ellipsis" />);
+                }
+              }
+              
+              // Show visible page range
+              for (let i = startPage; i <= endPage; i++) {
+                pages.push(
+                  <Pagination.Item
+                    key={i}
+                    active={i === activePage}
+                    onClick={() => handlePageChange(i)}
+                  >
+                    {i}
+                  </Pagination.Item>
+                );
+              }
+              
+              // Always show last page if not in range
+              if (endPage < totalPages) {
+                if (endPage < totalPages - 1) {
+                  pages.push(<Pagination.Ellipsis key="end-ellipsis" />);
+                }
+                pages.push(
+                  <Pagination.Item key={totalPages} onClick={() => handlePageChange(totalPages)}>
+                    {totalPages}
+                  </Pagination.Item>
+                );
+              }
+              
+              return pages;
+            })()}
+            
+            <Pagination.Next
+              onClick={() => handlePageChange(activePage + 1)}
+              disabled={activePage === Math.ceil(orders.length / itemsPerPage)}
+            />
+            <Pagination.Last
+              onClick={() => handlePageChange(Math.ceil(orders.length / itemsPerPage))}
+              disabled={activePage === Math.ceil(orders.length / itemsPerPage)}
+            />
+          </Pagination>
+        </div>
       </div>
     );
   };
@@ -936,6 +984,15 @@ console.log(
                       />
                     </Tab.Pane>
                   </Tab.Content>
+                  
+                  {/* Run Matching Button - Inside the admin card */}
+                  {isAdmin && (
+                    <div className="mt-4 pt-3 border-top">
+                      <Button onClick={() => dispatch(runMatchingAction())} className="btn btn-primary">
+                        Run Matching
+                      </Button>
+                    </div>
+                  )}
                 </div>
               </Tab.Container>
             </div>
@@ -1011,14 +1068,6 @@ console.log(
                 </div>
               </div>
             </Tab.Container>
-          </div>
-        )}
-
-        {isAdmin && (
-          <div className="col-12 mt-3">
-            <Button onClick={() => dispatch(runMatchingAction())} className="btn btn-primary">
-              Run Matching
-            </Button>
           </div>
         )}
       </div>

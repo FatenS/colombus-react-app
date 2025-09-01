@@ -1,8 +1,8 @@
 import axios from "axios";
 
 export const api = axios.create({
-  baseURL: "https://backend.colombus-capital.com/", 
-  // baseURL: "http://localhost:5001/",
+  // baseURL: "https://backend.colombus-capital.com/", 
+  baseURL: "http://localhost:5001/",
    // or your actual backend URL
   withCredentials: true
 });
@@ -28,7 +28,10 @@ api.interceptors.response.use(
         await api.post("/admin/token/refresh");
         return api(orig);              // replay original call
       } catch {
-        window.location.href = "/login";
+        // Don't redirect to login if we're on the landing page
+        if (window.location.pathname !== '/') {
+          window.location.href = "/login";
+        }
       }
     }
     return Promise.reject(err);

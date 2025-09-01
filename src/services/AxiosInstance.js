@@ -2,8 +2,8 @@
 import axios from "axios";
 
 const axiosInstance = axios.create({
-  // baseURL: "http://localhost:5001/",
-  baseURL: "https://backend.colombus-capital.com/",   // or your actual backend URL
+  baseURL: "http://localhost:5001/",
+  // baseURL: "https://backend.colombus-capital.com/",   // or your actual backend URL
 
   withCredentials: true               // ← send cookies automatically
 });
@@ -39,7 +39,9 @@ axiosInstance.interceptors.response.use(
    // 1) If the 401 came back from the refresh endpoint itself, stop right here:
     if (orig.url?.endsWith("/admin/token/refresh")) {
      // you've already tried to refresh and it failed → force login
-      window.location.href = "/login";
+      if (window.location.pathname !== '/') {
+        window.location.href = "/login";
+      }
       return Promise.reject(err);
    }
 
@@ -52,7 +54,9 @@ axiosInstance.interceptors.response.use(
        return axiosInstance(orig);
       } catch (refreshErr) {
         // refresh failed → force login
-        window.location.href = "/login";
+        if (window.location.pathname !== '/') {
+          window.location.href = "/login";
+        }
         return Promise.reject(refreshErr);
       }
     }

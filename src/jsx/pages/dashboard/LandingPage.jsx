@@ -1,4 +1,4 @@
-import React, { useEffect } from "react";
+import React, { useEffect, useState } from "react";
 import "./market.css";
 import logoFull from "../../../assets/images/white.png";
 import heroImage from "../../../assets/images/bg.png";
@@ -8,6 +8,7 @@ import team2 from "../../../assets/images/team-2.jpeg";
 import { useNavigate } from "react-router-dom";
 import FAQSection from "./faqs";
 import CalendlyPopup from "./CalendlyWidget";
+
 const LandingPage = () => {
   const navigate = useNavigate();
 
@@ -43,7 +44,7 @@ const LandingPage = () => {
       <section className="hero-section">
         <div className="hero-content">
           <div className="hero-text" data-aos="fade-right">
-            <h1>Your trusted partner in FX transactions </h1>
+            <h3>Your trusted partner in FX transactions </h3>
             <div className="animated-text">
               <h5 className="animated-item">Transparent FX Execution.</h5>
               <h5 className="animated-item">Innovative FX Strategies.</h5>
@@ -56,6 +57,17 @@ const LandingPage = () => {
             <button className="cta-button" onClick={handleGetStartedClick}>
               Get Started
             </button>
+          </div>
+          <div className="hero-video" data-aos="fade-left">
+            <iframe
+              width="100%"
+              height="315"
+              src="https://www.youtube.com/embed/EzVA2M8Gy6U"
+              title="Colombus Capital Introduction"
+              frameBorder="0"
+              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+              allowFullScreen
+            ></iframe>
           </div>
         </div>
       </section>

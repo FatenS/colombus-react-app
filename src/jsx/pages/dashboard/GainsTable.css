@@ -11,6 +11,28 @@
   
     font-family:"Calibri",sans-serif;
   }
+
+  /* PDF mode specific styles */
+  .pdf-mode .gains-table {
+    page-break-inside: auto;
+    break-inside: auto;
+    display: table !important;
+    width: 100% !important;
+  }
+
+  .pdf-mode .gains-table tbody {
+    display: table-row-group !important;
+  }
+
+  .pdf-mode .gains-table tbody tr {
+    page-break-inside: avoid;
+    break-inside: avoid;
+    display: table-row !important;
+  }
+
+  .pdf-mode .gains-table tbody td {
+    display: table-cell !important;
+  }
   
   /* outer border */
   .gains-table{

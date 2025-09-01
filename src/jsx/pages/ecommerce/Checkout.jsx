@@ -24,6 +24,7 @@ const Checkout = () => {
     client_name: "",
     year: new Date().getFullYear(),
     month: new Date().getMonth() + 1,
+    invoice_number: ""
   });
   const [error, setError] = useState("");
 
@@ -353,6 +354,16 @@ const Checkout = () => {
                                  onChange={e => setCreateFields(f => ({ ...f, creation_date: e.target.value }))}
                                  placeholder="Date de création (optionnel)"
                               />
+        <div className="mb-2">
+          <label>Numéro de facture (optionnel)</label>
+          <input
+            type="text"
+            className="form-control"
+            value={createFields.invoice_number}
+            onChange={e => setCreateFields(f => ({ ...f, invoice_number: e.target.value }))}
+            placeholder="Numéro de facture (optionnel)"
+          />
+        </div>
 
                           {error && <div className="alert alert-danger">{error}</div>}
                         </div>
